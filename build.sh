@@ -3,7 +3,7 @@
 # build.sh -- builds the VS Code extension for USE: language server (Java 21,
 # Maven), npm packages and the package use-ocl-<version>.vsix.
 #
-# Usage:  ./build.sh          build
+# Usage:  ./build.sh          build (Maven runs the unit tests in java/src/test)
 #         ./build.sh test     build and test: grammars, language server with
 #                             local Java and in the container, VS Code itself
 #                             (if code and xvfb-run are available)

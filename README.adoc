@@ -150,8 +150,9 @@ Needs a JDK 21, Maven and Node.js. The USE libraries the server is compiled agai
 
 === Running the tests
 
-`./build.sh test` runs three kinds of tests:
+`./build.sh test` runs four kinds of tests:
 
+* the unit tests of the language server (`java/src/test`, JUnit 6), which Maven runs in every build, so plain `./build.sh` runs them too: one test class per Java class covers the line and column of every message USE gives for the samples, the ranges of the diagnostics, output capture, the document service with a stub client, completion at about 60 positions in models and scripts, and `Main` and `Check` in their own JVM;
 * the grammars, with https://github.com/PanAeon/vscode-tmgrammar-test[vscode-tmgrammar-test] against the assertions in `test/grammar`;
 * the language server over LSP (`test/server-test.js`), once with local Java and once in the container: the samples in `test/samples` — correct and faulty models and scripts — must give exactly the expected diagnostics, an edit must add and remove one, closing a document must clear its diagnostics, completion must propose the expected names at 18 positions in models and scripts (and nothing in comments or after a `>` that does not belong to `->`), and the server must end on `shutdown` and `exit`;
 * the extension in VS Code itself (`test/e2e`), started invisibly with `xvfb-run` in a fresh profile, once for each way of running the server, including completion in a model and in a script; it needs `code` and `xvfb-run` and is skipped without them.
