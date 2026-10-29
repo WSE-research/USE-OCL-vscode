@@ -31,6 +31,9 @@ USE reports the errors of a model only when the model is loaded, and the error o
 * *No local USE needed* — the language server runs in the container image `use-ocl:7.5.0` with Docker or Podman, the image of https://github.com/WSE-research/USE-OCL-docker[USE-OCL-docker]; with Java 21 and a USE installation it runs without a container.
 * *Builds its own image* — if the image is missing, the extension offers to build it.
 
+.A model and a Soil script with mistakes: highlighting, squiggles, the hover with a warning that USE itself prints without a position, and the *Problems* view with USE's messages
+image::assets/screenshot.png["Screenshot of VS Code with a USE model, the hover of a type warning and the Problems view listing the messages of USE"]
+
 ---
 
 toc::[]
@@ -152,11 +155,11 @@ The samples are a small library model, independent of any course material.
 
 === Repository automation
 
-`.github/workflows/release.yml` builds the image, runs `./build.sh test` (without the tests in VS Code, which the runner cannot start) for every pull request and every push to `main`. After a merge to `main`, it replaces the release `latest`.
+`.github/workflows/release.yml` builds the image and runs `./build.sh test` (without the tests in VS Code, which the runner cannot start) for every pull request, and for every push to `main` that changes source files; after such a push it replaces the release `latest`. A push that changes only documentation (`*.adoc`, `*.md`, `assets/`), tests (`test/`) or the repository automation (`.github/`) starts no run, so it builds no release. Every other file counts as source, because it ends up in the package or builds it.
 
 === Releasing
 
-Every merge to `main` publishes the release `latest`: the tag `latest` moves to the merge commit, and the release carries `use-ocl-<version>.vsix` and the same file as `use-ocl.vsix`, whose download link stays the same. For a new version, raise `version` in `package.json`, and with it the version in `java/pom.xml` and `UseLanguageServer.VERSION`.
+Every merge to `main` that changes source files publishes the release `latest`; *Run workflow* on the workflow's page in the *Actions* tab does the same on demand for `main`. The tag `latest` moves to the commit it was built from, and the release carries `use-ocl-<version>.vsix` and the same file as `use-ocl.vsix`, whose download link stays the same. For a new version, raise `version` in `package.json`, and with it the version in `java/pom.xml` and `UseLanguageServer.VERSION`.
 
 == Contribute
 
