@@ -30,7 +30,7 @@ class CaptureTest {
     void outputOfOtherThreadsIsNotCaptured() throws InterruptedException {
         AtomicReference<String> inner = new AtomicReference<>();
         String out = Capture.during(() -> {
-            Thread t = new Thread(() -> System.out.print("other thread"));
+            Thread t = new Thread(() -> System.out.println("CaptureTest: printed by another thread, goes to stderr"));
             t.start();
             try {
                 t.join();
@@ -50,7 +50,7 @@ class CaptureTest {
             System.out.print("lost");
             throw new IllegalStateException("USE failed");
         }));
-        System.out.print("after the failure ");
+        System.out.println("CaptureTest: printed after a failed capture, goes to stderr");
         System.out.flush();
         assertEquals("next", Capture.during(() -> System.out.print("next")));
     }
@@ -58,7 +58,7 @@ class CaptureTest {
     @Test
     void outputOutsideACaptureGoesToStderr() {
         // nothing to compare: the output must neither throw nor end up in the next capture
-        System.out.println("written outside a capture");
+        System.out.println("CaptureTest: printed outside a capture, goes to stderr");
         System.out.flush();
         assertEquals("", Capture.during(() -> {
         }));
