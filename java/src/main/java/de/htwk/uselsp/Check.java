@@ -12,11 +12,11 @@ import org.eclipse.lsp4j.DiagnosticSeverity;
 import de.htwk.uselsp.UseChecker.Message;
 
 /**
- * Prüft Dateien wie der Sprachserver und gibt die Meldungen als
- * {@code datei:zeile:spalte: art: text} aus (Zeilen und Spalten ab 1); für Tests
- * und Skripte. Exit-Code 1, wenn es Fehler gibt.
+ * Checks files like the language server does and prints the messages as
+ * {@code file:line:column: severity: text} (lines and columns from 1); for tests
+ * and scripts. Exit code 1 if there are errors.
  *
- * <p>Aufruf: {@code java -Duse.home=<USE-Ordner> -cp ... de.htwk.uselsp.Check datei.use|datei.soil ...}
+ * <p>Usage: {@code java -Duse.home=<USE-dir> -cp ... de.htwk.uselsp.Check file.use|file.soil ...}
  */
 public final class Check {
 
@@ -32,7 +32,7 @@ public final class Check {
             Path file = Path.of(arg);
             String text = Files.readString(file);
             List<Message> messages = arg.endsWith(".soil") ? checker.checkSoil(text)
-                    : checker.checkModel(text, file.getFileName().toString(), file.toUri());
+                    : checker.checkModel(text, file.getFileName().toString(), file.toUri()).messages();
             for (Diagnostic d : Diagnostics.of(messages, text)) {
                 out.printf("%s:%d:%d: %s: %s%n", arg, d.getRange().getStart().getLine() + 1,
                         d.getRange().getStart().getCharacter() + 1, d.getSeverity().name().toLowerCase(),

@@ -1,8 +1,8 @@
 {
   "name": "use-ocl",
   "displayName": "USE (UML/OCL)",
-  "description": "Hervorhebung und Prüfung für USE-Modelle (.use) und Soil-Skripte (.soil), geprüft mit dem Compiler von USE 7.5",
-  "version": "0.1.0",
+  "description": "Hervorhebung, Prüfung und Autovervollständigung für USE-Modelle (.use) und Soil-Skripte (.soil), mit dem Compiler von USE 7.5",
+  "version": "0.2.0",
   "publisher": "htwk-se",
   "license": "MIT",
   "repository": {

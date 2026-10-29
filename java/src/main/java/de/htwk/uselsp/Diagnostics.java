@@ -10,7 +10,7 @@ import org.eclipse.lsp4j.Range;
 
 import de.htwk.uselsp.UseChecker.Message;
 
-/** Macht aus Meldungen von USE LSP-Diagnosen mit einem sinnvollen Bereich. */
+/** Turns USE messages into LSP diagnostics with a sensible range. */
 final class Diagnostics {
 
     private static final String OPERATORS = "-<>=:.+*/|@#!";
@@ -36,9 +36,9 @@ final class Diagnostics {
     }
 
     /**
-     * USE nennt nur den Anfang des Tokens. Der Bereich reicht über den Bezeichner,
-     * die Zeichenkette oder den Operator dort; Meldungen ohne Position markieren die
-     * erste Zeile, Meldungen am Dateiende das Ende der letzten nichtleeren Zeile.
+     * USE gives only the start of the token. The range covers the identifier, string
+     * or operator there; messages without a position mark the first line, messages at
+     * the end of the file the end of the last non-empty line.
      */
     static Range range(String[] lines, Message m) {
         if (m.line() <= 0) {

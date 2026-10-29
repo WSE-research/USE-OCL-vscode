@@ -20,14 +20,15 @@ endif::[]
 
 = USE OCL for Visual Studio Code
 
-Syntax highlighting and live validation of USE models (`.use`) and Soil scripts (`.soil`) in Visual Studio Code, checked by the compiler of https://github.com/useocl/use[USE 7.5] itself. An extension of the https://wse-research.org/[Web & Software Engineering research group] at https://www.htwk-leipzig.de/[Leipzig University of Applied Sciences (HTWK Leipzig, Germany)], made for the UML/OCL exercises of the software engineering course.
+Syntax highlighting, live validation and autocompletion of USE models (`.use`) and Soil scripts (`.soil`) in Visual Studio Code, backed by the compiler of https://github.com/useocl/use[USE 7.5] itself. An extension of the https://wse-research.org/[Web & Software Engineering research group] at https://www.htwk-leipzig.de/[Leipzig University of Applied Sciences (HTWK Leipzig, Germany)], made for the UML/OCL exercises of the software engineering course.
 
-USE reports the errors of a model only when the model is loaded, and the error of a Soil script only when the line runs. The extension runs the same compiler while you type: errors and warnings appear as squiggles in the editor and in the *Problems* view, with the messages and positions of `use -c`.
+USE reports the errors of a model only when the model is loaded, and the error of a Soil script only when the line runs. The extension runs the same compiler while you type: errors and warnings appear as squiggles in the editor and in the *Problems* view, with the messages and positions of `use -c`. Completion proposes what fits at the cursor, with the types USE computes for the expression in front of it.
 
 * *Highlighting* — TextMate grammars for models and Soil scripts, with the keywords taken from the grammars of USE 7.5.
 * *Validation while typing* — everything `use -c` checks: syntax, the names of classes, attributes, roles and operations, and the types in OCL expressions.
 * *Warnings with a position* — type-system warnings such as `Set{0, 1, 2}->includes('2')` (always false) are marked where they occur; USE itself prints them without a line number.
 * *Soil scripts line by line* — as the USE shell reads them: the syntax of statements after `!` and of queries after `?`, `??` and `:`, unknown commands (usually a forgotten `!`) and `=` where `:=` was meant.
+* *Autocompletion* — attributes, roles and operations after `.`, collection operations and iterators after `->`, enumeration literals after `::`, types, class names, variables in scope and keywords; in Soil scripts also the objects of the script and the classes and associations of the models next to it.
 * *No local USE needed* — the language server runs in the container image `use-ocl:7.5.0` with Docker or Podman, the image of https://github.com/WSE-research/USE-OCL-docker[USE-OCL-docker]; with Java 21 and a USE installation it runs without a container.
 * *Builds its own image* — if the image is missing, the extension offers to build it.
 
@@ -51,11 +52,14 @@ toc::[]
 |Soil scripts
 |Each line is checked as the USE shell reads it: statements after `!` and `!!` with the shell's own parser (which also knows `openter`, `opexit` and `create x : C`), expressions after `?`, `??` and `:` for their syntax, and every other line against the commands of the shell, with a hint when it looks like a statement without `!`. A statement such as `!obj.attr = 3` is marked: Soil assigns with `:=`. Whether classes, attributes and objects exist is not checked, because the objects of a script are often created by another one; run the script in USE for that (for instance with `run-use.sh -nogui model.use script.soil`).
 
+|Autocompletion
+|After `.` the attributes, roles and operations of the expression's type (inherited ones included) and the standard operations USE offers for it; after `->` the collection operations and the iterators (`select`, `forAll`, `iterate`, …); after `::` the literals of the enumeration, and after `context C::` the operations of `C`. In type positions (`name :`, parameters, iterator variables, `let`) the built-in types, collection types, classes and enumerations. Elsewhere the variables in scope (`self`, parameters, `result` in postconditions, iterator and `let` variables, attributes of `self` without `self.`), class and enumeration names and keywords, and at the level of declarations templates for classes, associations, enumerations and constraints. The type of the expression in front of `.` or `->` is computed by USE against the last error-free version of the model, so completion keeps working while the line being typed is incomplete. In Soil scripts: the commands of the shell and the statements at the start of a line, objects and variables of the script with their attributes and operations (all operations after `!`, only the ones callable from OCL in queries), classes after `new` and `create x :`, associations after `insert (…) into`, and the operations of the object after `openter`; the models are the `.use` files in the folder of the script.
+
 |Highlighting
 |Keywords, class, association, enumeration and state machine names, invariant and condition names, attributes and roles, OCL types, collection operations after `->`, enumeration literals (`Status::open`), strings, numbers and comments (`--`, `//`, `/* */`). In Soil scripts also the command markers `!`, `?`, `??`, `:` and the commands of the USE shell. Comment toggling, bracket matching and folding of class and association blocks come with it.
 
 |Language server
-|Starts when the first `.use` or `.soil` file is opened (about a second in the container) and checks a file 250 ms after the last change. In the container it runs without network access and sees only its own code, mounted read-only; the files reach it as text through the connection to VS Code.
+|Starts when the first `.use` or `.soil` file is opened (about a second in the container) and checks a file 250 ms after the last change; completion answers within a few milliseconds. In the container it runs without network access and sees only its own code, mounted read-only; the files reach it as text through the connection to VS Code.
 
 |Docker and Podman
 |Picks the engine as `run-use.sh` does: the first one whose `info` works, Docker first. If Podman's default storage cannot be used, as on the Linux PCs of the university (home on NFS, no subuid ranges), it uses the same private store under `/var/tmp/use-ocl-<uid>` (`USE_PODMAN_STORE` changes it). On SELinux hosts the container runs with `label=disable`.
@@ -68,12 +72,13 @@ The user interface of the extension (commands, settings, notifications) is in Ge
 
 == Architecture
 
-Two parts: the client `extension.js`, which starts the language server and connects it to VS Code through https://github.com/microsoft/vscode-languageserver-node[vscode-languageclient], and the language server in `java/`, written with https://github.com/eclipse-lsp4j/lsp4j[LSP4J] (package `de.htwk.uselsp`). The client finds a way to run the server — a local Java 21 when `useOcl.useHome` is set, the container otherwise — offers to build a missing image as a VS Code task from `container/Dockerfile`, and restarts the server when a setting changes. The server keeps the open documents, checks each one after a change and publishes the result as diagnostics; it checks on a single thread, because USE keeps global state.
+Two parts: the client `extension.js`, which starts the language server and connects it to VS Code through https://github.com/microsoft/vscode-languageserver-node[vscode-languageclient], and the language server in `java/`, written with https://github.com/eclipse-lsp4j/lsp4j[LSP4J] (package `de.htwk.uselsp`). The client finds a way to run the server — a local Java 21 when `useOcl.useHome` is set, the container otherwise — offers to build a missing image as a VS Code task from `container/Dockerfile`, restarts the server when a setting changes, and answers the server's request `useOcl/models` with the `.use` files next to a Soil script. The server keeps the open documents, checks each one after a change and publishes the result as diagnostics, and answers completion requests; it does both on a single thread, because USE keeps global state.
 
-Four decisions carry most of the design:
+Five decisions carry most of the design:
 
 * *USE checks, the server translates.* Models go through `USECompiler.compileSpecification`, Soil lines through the parser of the USE shell (`ShellCommandCompiler`; its parse step is protected and is called by reflection, because the plain Soil parser rejects `openter` and `opexit`). The server reads USE's error output (`file:line:col: …` for semantic errors, `file:line L:C …` from ANTLR for syntax errors) and turns it into diagnostics whose range covers the identifier, string or operator at that position. That keeps the messages identical to USE's, and no part of OCL is implemented twice.
 * *Warnings get their position from a second compile.* USE prints type-system warnings through its log, without a position. When a compile logs one, the server compiles again with these checks set to errors; the positions that only the second compile reports are the warnings.
+* *Completion asks USE for types.* The server reads from the text in front of the cursor what is needed there and which variables are in scope (the class of `self`, parameters, iterator and `let` variables, the objects of a Soil script). The expression in front of `.` or `->` is compiled by USE with these variables against the last error-free version of the model, and the result type decides the proposals; the standard operations are the ones whose signature USE accepts for that type. So completion knows exactly the operations USE knows, including those of OCL extensions.
 * *Standard output belongs to the protocol.* USE writes messages to `System.out`, which carries the LSP messages. The server redirects `System.out` and `System.err` before the first USE class is loaded and captures what USE writes during a check.
 * *The container is only a Java runtime.* The client starts it with `--network none` and mounts the server's jars read-only; the image is the one `run-use.sh` builds, so a student needs no second image.
 
@@ -145,11 +150,12 @@ Needs a JDK 21, Maven and Node.js. The USE libraries the server is compiled agai
 
 === Running the tests
 
-`./build.sh test` runs three kinds of tests:
+`./build.sh test` runs four kinds of tests:
 
+* the unit tests of the language server (`java/src/test`, JUnit 6), which Maven runs in every build, so plain `./build.sh` runs them too: one test class per Java class covers the line and column of every message USE gives for the samples, the ranges of the diagnostics, output capture, the document service with a stub client, completion at about 60 positions in models and scripts, and `Main` and `Check` in their own JVM;
 * the grammars, with https://github.com/PanAeon/vscode-tmgrammar-test[vscode-tmgrammar-test] against the assertions in `test/grammar`;
-* the language server over LSP (`test/server-test.js`), once with local Java and once in the container: the samples in `test/samples` — correct and faulty models and scripts — must give exactly the expected diagnostics, an edit must add and remove one, closing a document must clear its diagnostics, and the server must end on `shutdown` and `exit`;
-* the extension in VS Code itself (`test/e2e`), started invisibly with `xvfb-run` in a fresh profile, once for each way of running the server; it needs `code` and `xvfb-run` and is skipped without them.
+* the language server over LSP (`test/server-test.js`), once with local Java and once in the container: the samples in `test/samples` — correct and faulty models and scripts — must give exactly the expected diagnostics, an edit must add and remove one, closing a document must clear its diagnostics, completion must propose the expected names at 18 positions in models and scripts (and nothing in comments or after a `>` that does not belong to `->`), and the server must end on `shutdown` and `exit`;
+* the extension in VS Code itself (`test/e2e`), started invisibly with `xvfb-run` in a fresh profile, once for each way of running the server, including completion in a model and in a script; it needs `code` and `xvfb-run` and is skipped without them.
 
 The samples are a small library model, independent of any course material.
 

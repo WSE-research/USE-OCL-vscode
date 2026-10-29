@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Sprachserver für USE-Modelle und Soil-Skripte; gebaut von ../build.sh -->
+<!-- Language server for USE models and Soil scripts; built by ../build.sh -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -7,16 +7,29 @@
 
   <groupId>de.htwk.se</groupId>
   <artifactId>use-lsp</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <packaging>jar</packaging>
 
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <lsp4j.version>0.24.0</lsp4j.version>
-    <!-- USE-Installation (Ordner mit lib/use-core-7.5.0.jar), von build.sh gesetzt -->
+    <junit.version>6.1.3</junit.version>
+    <!-- USE installation (folder with lib/use-core-7.5.0.jar), set by build.sh -->
     <use.home>${env.USE_HOME}</use.home>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <dependency>
@@ -24,14 +37,27 @@
       <artifactId>org.eclipse.lsp4j</artifactId>
       <version>${lsp4j.version}</version>
     </dependency>
-    <!-- USE gibt es nicht auf Maven Central; zur Laufzeit kommt es aus der
-         USE-Installation bzw. dem Container und wird nicht mitgeliefert. -->
+    <!-- USE is not on Maven Central; at runtime it comes from the USE
+         installation or the container and is not shipped. -->
     <dependency>
       <groupId>org.tzi.use</groupId>
       <artifactId>use-core</artifactId>
       <version>7.5.0</version>
       <scope>system</scope>
       <systemPath>${use.home}/lib/use-core-7.5.0.jar</systemPath>
+    </dependency>
+    <!-- for compiling only: use-gui.jar contains Guava, the type of ExpStdOp.opmap -->
+    <dependency>
+      <groupId>org.tzi.use</groupId>
+      <artifactId>use-gui</artifactId>
+      <version>7.5.0</version>
+      <scope>system</scope>
+      <systemPath>${use.home}/lib/use-gui.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -47,6 +73,19 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
         <version>3.4.2</version>
+      </plugin>
+      <!-- unit tests in src/test, run by every build; the tests use the samples
+           in ../test/samples and start Main and Check as separate processes -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.6.1</version>
+        <configuration>
+          <systemPropertyVariables>
+            <use.home>${use.home}</use.home>
+            <project.version>${project.version}</project.version>
+          </systemPropertyVariables>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

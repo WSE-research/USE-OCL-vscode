@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# build.sh -- baut die VS-Code-Erweiterung für USE: Sprachserver (Java 21,
-# Maven), npm-Pakete und das Paket use-ocl-<version>.vsix.
+# build.sh -- builds the VS Code extension for USE: language server (Java 21,
+# Maven), npm packages and the package use-ocl-<version>.vsix.
 #
-# Aufruf: ./build.sh          bauen
-#         ./build.sh test     bauen und testen: Grammatiken, Sprachserver mit
-#                             lokalem Java und im Container, VS Code selbst
-#                             (wenn code und xvfb-run vorhanden sind)
+# Usage:  ./build.sh          build (Maven runs the unit tests in java/src/test)
+#         ./build.sh test     build and test: grammars, language server with
+#                             local Java and in the container, VS Code itself
+#                             (if code and xvfb-run are available)
 #
-# Benötigt JDK 21 (JAVA_HOME), Maven und Node.js. Die USE-Bibliotheken kommen aus
-# USE_HOME (Ordner mit lib/use-core-7.5.0.jar) oder aus dem Image use-ocl:7.5.0
-# (docker build -t use-ocl:7.5.0 container, oder run-use.sh aus den SE-Übungen).
+# Requires JDK 21 (JAVA_HOME), Maven and Node.js. The USE libraries come from
+# USE_HOME (folder with lib/use-core-7.5.0.jar) or from the image use-ocl:7.5.0
+# (docker build -t use-ocl:7.5.0 container, or run-use.sh from the SE exercises).
 
 set -euo pipefail
 
@@ -18,7 +18,7 @@ IMAGE="use-ocl:7.5.0"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 
-# Build-Ausgaben nicht über Dropbox verteilen (wirkt nur, wo Dropbox läuft)
+# Don't sync build output via Dropbox (only takes effect where Dropbox runs)
 for d in node_modules server java/target .build; do
   mkdir -p "$d"
   python3 -c 'import os, sys; os.setxattr(sys.argv[1], "user.com.dropbox.ignored", b"1")' "$d" 2>/dev/null || true
@@ -56,8 +56,8 @@ echo "Sprachserver ..." >&2
 rm -rf server/*
 cp java/target/use-lsp.jar java/target/lib/*.jar server/
 
-# In den SE-Übungen liegt daneben use-docker/ mit dem Dockerfile für run-use.sh;
-# beide müssen dasselbe Image bauen (Kommentare dürfen sich unterscheiden)
+# In the SE exercises, use-docker/ next to this folder holds the Dockerfile for
+# run-use.sh; both must build the same image (comments may differ)
 if [[ -f ../use-docker/Dockerfile ]] \
   && ! diff -q <(grep -v '^#' ../use-docker/Dockerfile) <(grep -v '^#' container/Dockerfile) >/dev/null; then
   echo "Warnung: container/Dockerfile weicht von ../use-docker/Dockerfile ab." >&2

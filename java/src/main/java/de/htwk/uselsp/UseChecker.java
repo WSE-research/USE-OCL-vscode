@@ -32,39 +32,43 @@ import org.tzi.use.uml.ocl.value.VarBindings;
 import org.tzi.use.util.Log;
 
 /**
- * Prüft Modelle und Soil-Skripte mit dem Compiler von USE selbst und macht aus
- * dessen Ausgabe Meldungen mit Position. Nicht threadsicher (USE hat globalen
- * Zustand); der Server ruft es nur aus einem Thread auf.
+ * Checks models and Soil scripts with USE's own compiler and turns its output
+ * into messages with positions. Not thread-safe (USE has global state); the
+ * server calls it from a single thread only.
  */
 final class UseChecker {
 
     enum Severity { ERROR, WARNING, INFO }
 
-    /** Eine Meldung; {@code line} zählt ab 1 (0: ohne Position), {@code column} ab 0. */
+    /** A message; {@code line} counts from 1 (0: no position), {@code column} from 0. */
     record Message(int line, int column, String text, Severity severity) {
     }
 
-    private record Pass(List<Message> messages, String logged) {
+    /** The messages for a model and the compiled model (null if there are errors). */
+    record Checked(List<Message> messages, MModel model) {
     }
 
-    /** Eingabename für einzelne Soil-Zeilen, wie in der USE-Shell. */
+    private record Pass(List<Message> messages, String logged, MModel model) {
+    }
+
+    /** Input name for single Soil lines, as in the USE shell. */
     private static final String INPUT = "<input>";
 
-    /** Befehle der USE-Shell (Shell.processLine), die nur als ganze Zeile gelten. */
+    /** USE shell commands (Shell.processLine) that are valid only as a whole line. */
     private static final Set<String> COMMANDS = Set.of("q", "quit", "exit", "net", "reset", "step on",
             "undo", "redo", "genmonitor");
 
-    /** Befehle der USE-Shell mit Argumenten. */
+    /** USE shell commands with arguments. */
     private static final List<String> COMMAND_PREFIXES = List.of("help", "check", "genvcg", "genmm", "info",
             "open", "reopen", "read", "write", "constraints", "gen ", "reload extensions", "coverage", "plugins",
             "delay", "debug");
 
-    /** Zeilen, die wie eine Soil-Anweisung ohne {@code !} aussehen. */
+    /** Lines that look like a Soil statement without {@code !}. */
     private static final Pattern SOIL_WITHOUT_BANG = Pattern.compile(
             "(new|create|destroy|insert|delete|set|openter|opexit|declare)\\b.*"
                     + "|[A-Za-z_]\\w*(\\.[A-Za-z_]\\w*)?\\s*:=.*");
 
-    /** {@code obj.attr = wert} als Anweisung: Vergleich statt Zuweisung. */
+    /** {@code obj.attr = value} as a statement: comparison instead of assignment. */
     private static final Pattern COMPARISON = Pattern.compile(
             "^(\\s*[A-Za-z_]\\w*(?:\\s*\\.\\s*[A-Za-z_]\\w*)*\\s*)=(?![=>])");
 
@@ -74,7 +78,7 @@ final class UseChecker {
 
     UseChecker(Path useHome) {
         Log.setShowWarnings(true);
-        // die OCL-Erweiterungen der Installation laden, wie USE beim Start
+        // load the installation's OCL extensions, as USE does at startup
         if (useHome != null && Files.isDirectory(useHome.resolve("oclextensions"))) {
             ExtensionManager.EXTENSIONS_FOLDER = useHome.resolve("oclextensions").toString();
             ExtensionManager.getInstance().loadExtensions();
@@ -82,10 +86,10 @@ final class UseChecker {
     }
 
     /**
-     * Prüft ein Modell wie {@code use -c}. {@code base} dient zum Auflösen von
-     * {@code import} und darf null sein.
+     * Checks a model like {@code use -c}. {@code base} is used to resolve
+     * {@code import} and may be null.
      */
-    List<Message> checkModel(String text, String name, URI base) {
+    Checked checkModel(String text, String name, URI base) {
         Pass first = compileModel(text, name, base);
         List<Message> messages = new ArrayList<>(first.messages());
         if (first.logged().contains("Warning")) {
@@ -93,28 +97,30 @@ final class UseChecker {
         } else if (!first.logged().isBlank()) {
             System.err.print(first.logged());
         }
-        return messages;
+        return new Checked(messages, first.model());
+    }
+
+    /** Compiles a model without messages; null if it has errors. */
+    MModel compile(String text, String name, URI base) {
+        return compileModel(text, name, base).model();
     }
 
     private Pass compileModel(String text, String name, URI base) {
         StringWriter out = new StringWriter();
         PrintWriter err = new PrintWriter(out);
         InputStream in = stream(text);
-        String logged = Capture.during(() -> {
-            if (base != null) {
-                USECompiler.compileSpecification(in, name, base, err, new ModelFactory());
-            } else {
-                USECompiler.compileSpecification(in, name, err, new ModelFactory());
-            }
-        });
+        MModel[] model = new MModel[1];
+        String logged = Capture.during(() -> model[0] = base != null
+                ? USECompiler.compileSpecification(in, name, base, err, new ModelFactory())
+                : USECompiler.compileSpecification(in, name, err, new ModelFactory()));
         err.flush();
-        return new Pass(parse(out.toString(), name, false), logged);
+        return new Pass(parse(out.toString(), name, false), logged, model[0]);
     }
 
     /**
-     * Warnungen der Typprüfung (etwa "will always evaluate to false") gibt USE
-     * ohne Position aus. Ein zweiter Lauf, in dem diese Prüfungen Fehler sind,
-     * liefert die Stellen: was dort neu hinzukommt, sind die Warnungen.
+     * USE prints type-check warnings (such as "will always evaluate to false")
+     * without a position. A second run, in which these checks are errors, yields
+     * the locations: whatever is new there are the warnings.
      */
     private List<Message> locateWarnings(String text, String name, URI base, Pass first) {
         WarningType unrelated = Options.checkWarningsUnrelatedTypes();
@@ -150,9 +156,9 @@ final class UseChecker {
     }
 
     /**
-     * Prüft ein Soil-Skript Zeile für Zeile, so wie die USE-Shell es liest. Ohne
-     * Systemzustand (Objekte entstehen oft in einem anderen Skript) gibt es nur
-     * Syntaxfehler und unbekannte Befehle.
+     * Checks a Soil script line by line, the way the USE shell reads it. Without
+     * a system state (objects are often created in another script) there are only
+     * syntax errors and unknown commands.
      */
     List<Message> checkSoil(String text) {
         List<Message> messages = new ArrayList<>();
@@ -203,10 +209,10 @@ final class UseChecker {
     }
 
     /**
-     * Zerlegt eine Anweisung nach {@code !} so wie die USE-Shell: mit der Grammatik
-     * ShellCommand, die außer Soil auch die alten Formen kennt ({@code openter},
-     * {@code opexit}, {@code create x : C}). Deren reine Syntaxanalyse ist in USE
-     * nur protected; fehlt sie, bleibt die Soil-Grammatik.
+     * Parses a statement after {@code !} the way the USE shell does: with the grammar
+     * ShellCommand, which besides Soil also knows the old forms ({@code openter},
+     * {@code opexit}, {@code create x : C}). Its parse-only method is merely protected
+     * in USE; if it is missing, the Soil grammar is used.
      */
     private static ASTStatement parseShellStatement(String statement, PrintWriter err) {
         if (SHELL_PARSER == null) {
@@ -238,11 +244,11 @@ final class UseChecker {
         PrintWriter err = new PrintWriter(out);
         Capture.during(() -> OCLCompiler.compileExpression(emptyModel, expression, INPUT, err, new VarBindings()));
         err.flush();
-        // gegen das leere Modell sind alle Namen unbekannt: nur Syntaxfehler zählen
+        // against the empty model all names are unknown: only syntax errors count
         return shift(parse(out.toString(), INPUT, true), line, offset);
     }
 
-    /** Verschiebt Meldungen zu einer einzelnen Zeile an ihre Stelle im Skript. */
+    /** Moves messages for a single line to their position in the script. */
     private static List<Message> shift(List<Message> messages, int line, int offset) {
         List<Message> shifted = new ArrayList<>();
         for (Message m : messages) {
@@ -257,10 +263,10 @@ final class UseChecker {
     }
 
     /**
-     * Zerlegt die Fehlerausgabe von USE. Syntaxfehler (ANTLR):
-     * {@code name:line 16:5 no viable alternative ...}; Typfehler:
-     * {@code name:45:52: Undefined operation ...}. Spalten zählen ab 0, Zeilen
-     * ohne dieses Muster setzen die vorige Meldung fort.
+     * Parses USE's error output. Syntax errors (ANTLR):
+     * {@code name:line 16:5 no viable alternative ...}; type errors:
+     * {@code name:45:52: Undefined operation ...}. Columns count from 0; lines
+     * without this pattern continue the previous message.
      */
     private static List<Message> parse(String output, String name, boolean syntaxOnly) {
         Pattern syntax = Pattern.compile(Pattern.quote(name) + ":line (\\d+):(\\d+) (.*)");
@@ -301,7 +307,7 @@ final class UseChecker {
         return new Message(line, column, text, Severity.ERROR);
     }
 
-    /** USE liest mit dem Standardzeichensatz (ANTLRInputStream); Spalten zählen Zeichen. */
+    /** USE reads with the default charset (ANTLRInputStream); columns count characters. */
     private static InputStream stream(String text) {
         return new ByteArrayInputStream(text.getBytes(Charset.defaultCharset()));
     }
