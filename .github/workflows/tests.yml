@@ -1,0 +1,205 @@
+# Runs every test and analyzes the code with Qodana, for every pull request to
+# main and after every merge (push) to main that changes source files. The test
+# results appear as the check "Test results" and in the job summary; the test
+# results, the coverage and all problems Qodana found go to the pull request as a
+# comment, which the run after the merge updates.
+name: Tests and analysis
+
+on:
+  push:
+    branches: [main]
+    # documentation and the release automation alone need no tests
+    paths-ignore:
+      - '**.adoc'
+      - '**.md'
+      - 'assets/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.github/workflows/release.yml'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.adoc'
+      - '**.md'
+      - 'assets/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write          # the check "Test results" and Qodana's annotations
+  pull-requests: write   # the report comment
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JACOCO_VERSION: 0.8.16
+
+jobs:
+  test:
+    name: Test and analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash   # with pipefail, so that "| tee" keeps a test's exit code
+    env:
+      # coverage of every JVM that runs the server's classes: Maven's unit tests
+      # (and the JVMs they start), and the server started by the LSP and VS Code tests
+      JACOCO: -javaagent:${{ github.workspace }}/.build/jacoco/jacocoagent.jar=destfile=${{ github.workspace }}/.build/coverage/jacoco.exec,append=true,includes=de.htwk.uselsp.*
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install VS Code and Xvfb
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/code.deb" 'https://update.code.visualstudio.com/latest/linux-deb-x64/stable'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb "$RUNNER_TEMP/code.deb" >/dev/null
+          code --version
+
+      - name: Build container image
+        run: docker build -t use-ocl:7.5.0 container
+
+      - name: Download JaCoCo
+        run: |
+          mkdir -p .build/jacoco .build/coverage .build/logs .build/test-results
+          base=https://repo1.maven.org/maven2/org/jacoco
+          curl -sSfL -o .build/jacoco/jacocoagent.jar "$base/org.jacoco.agent/$JACOCO_VERSION/org.jacoco.agent-$JACOCO_VERSION-runtime.jar"
+          curl -sSfL -o .build/jacoco/jacococli.jar "$base/org.jacoco.cli/$JACOCO_VERSION/org.jacoco.cli-$JACOCO_VERSION-nodeps.jar"
+          sha256sum -c - <<EOF
+          37ae2f374ad77e85c59c6e5b46565226c3ac3cb460ac19de0bcb844ac2f43e33  .build/jacoco/jacocoagent.jar
+          1f2a806225623fbd9f53d1ee0e42a6975323de0adebe01c12fc464ed147d756a  .build/jacoco/jacococli.jar
+          EOF
+
+      - name: Build with unit tests
+        id: build
+        env:
+          JAVA_TOOL_OPTIONS: ${{ env.JACOCO }}
+        run: ./build.sh 2>&1 | tee .build/logs/build.log
+
+      - name: Grammar tests
+        id: grammar
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: npm run -s test:grammar -- --xunit-report .build/test-results/grammar 2>&1 | tee .build/logs/grammar.log
+
+      - name: Language server test, local Java
+        id: lsp-java
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        env:
+          JAVA_TOOL_OPTIONS: ${{ env.JACOCO }}
+        run: node test/server-test.js 2>&1 | tee .build/logs/lsp-java.log
+
+      - name: Language server test, container
+        id: lsp-container
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: USE_ENGINE=docker node test/server-test.js --container 2>&1 | tee .build/logs/lsp-container.log
+
+      - name: VS Code test, container
+        id: e2e-container
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: USE_ENGINE=docker node test/e2e/run.js 2>&1 | tee .build/logs/e2e-container.log
+
+      - name: VS Code test, local Java
+        id: e2e-java
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        env:
+          JAVA_TOOL_OPTIONS: ${{ env.JACOCO }}
+        run: node test/e2e/run.js --java 2>&1 | tee .build/logs/e2e-java.log
+
+      - name: Collect test results and coverage
+        if: ${{ !cancelled() && steps.build.outcome != 'skipped' }}
+        run: |
+          # the LSP and VS Code tests print "ok"/"FAIL" lines; make JUnit reports of them
+          convert() {
+            [[ $3 == success || $3 == failure ]] || return 0
+            node .github/scripts/junit-from-log.js "$2" ".build/logs/$1.log" "$([[ $3 == success ]] && echo 0 || echo 1)" \
+              ".build/test-results/$1/report.xml"
+          }
+          convert lsp-java "Language server, local Java" "${{ steps.lsp-java.outcome }}"
+          convert lsp-container "Language server, container" "${{ steps.lsp-container.outcome }}"
+          convert e2e-container "VS Code, container" "${{ steps.e2e-container.outcome }}"
+          convert e2e-java "VS Code, local Java" "${{ steps.e2e-java.outcome }}"
+          if [[ -f .build/coverage/jacoco.exec && -d java/target/classes ]]; then
+            java -jar .build/jacoco/jacococli.jar report .build/coverage/jacoco.exec --name use-lsp \
+              --classfiles java/target/classes --sourcefiles java/src/main/java \
+              --xml .build/coverage/jacoco.xml --html .build/coverage/html --quiet
+            # where Qodana for JVM looks for coverage (only with a Qodana token)
+            mkdir -p .qodana/code-coverage
+            cp .build/coverage/jacoco.xml .qodana/code-coverage/
+          fi
+
+      - name: Publish test results
+        if: ${{ !cancelled() && steps.build.outcome != 'skipped' }}
+        uses: dorny/test-reporter@v3
+        with:
+          name: Test results
+          path: 'java/target/surefire-reports/TEST-*.xml,.build/test-results/**/*.xml'
+          reporter: java-junit
+          fail-on-error: false   # the failed test steps already fail the job
+          fail-on-empty: false
+
+      - name: Qodana
+        id: qodana
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: JetBrains/qodana-action@v2026.2.2
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+          # the pom finds the USE libraries through USE_HOME; Qodana's container
+          # sees the repository under /data/project
+          USE_HOME: /data/project/.build/use
+        with:
+          args: ${{ secrets.QODANA_TOKEN != '' && '--linter qodana-jvm' || '' }}
+          env-vars-to-linter: USE_HOME
+          pr-mode: false           # the whole code, not only the changed files
+          post-pr-comment: false   # the report below contains all problems
+          upload-result: true
+          artifact-name: qodana-report
+          results-dir: ${{ runner.temp }}/qodana/results
+
+      - name: Report to the pull request
+        if: ${{ !cancelled() }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TEST_GROUPS: |
+            Unit tests (JUnit)|java/target/surefire-reports
+            Grammars|.build/test-results/grammar
+            Language server, local Java|.build/test-results/lsp-java
+            Language server, container|.build/test-results/lsp-container
+            VS Code, container|.build/test-results/e2e-container
+            VS Code, local Java|.build/test-results/e2e-java
+          COVERAGE_XML: .build/coverage/jacoco.xml
+          QODANA_SARIF: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+          QODANA_OUTCOME: ${{ steps.qodana.outcome }}
+          QODANA_LINTER: ${{ secrets.QODANA_TOKEN != '' && 'qodana-jvm' || 'qodana-jvm-community' }}
+          REPORT_FILE: .build/report.md
+        run: node .github/scripts/ci-report.js
+
+      - name: Upload test logs, reports and coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: |
+            .build/logs
+            .build/test-results
+            .build/coverage/jacoco.xml
+            .build/coverage/html
+            .build/report.md
+            java/target/surefire-reports
+          include-hidden-files: true
+          if-no-files-found: ignore

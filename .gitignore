@@ -3,3 +3,5 @@ server/
 java/target/
 .build/
 *.vsix
+.idea/
+.qodana/
