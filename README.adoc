@@ -155,11 +155,11 @@ The samples are a small library model, independent of any course material.
 
 === Repository automation
 
-`.github/workflows/release.yml` builds the image, runs `./build.sh test` (without the tests in VS Code, which the runner cannot start) for every pull request and every push to `main`. After a merge to `main`, it replaces the release `latest`.
+`.github/workflows/release.yml` builds the image and runs `./build.sh test` (without the tests in VS Code, which the runner cannot start) for every pull request, and for every push to `main` that changes source files; after such a push it replaces the release `latest`. A push that changes only documentation (`*.adoc`, `*.md`, `assets/`), tests (`test/`) or the repository automation (`.github/`) starts no run, so it builds no release. Every other file counts as source, because it ends up in the package or builds it.
 
 === Releasing
 
-Every merge to `main` publishes the release `latest`: the tag `latest` moves to the merge commit, and the release carries `use-ocl-<version>.vsix` and the same file as `use-ocl.vsix`, whose download link stays the same. For a new version, raise `version` in `package.json`, and with it the version in `java/pom.xml` and `UseLanguageServer.VERSION`.
+Every merge to `main` that changes source files publishes the release `latest`; *Run workflow* on the workflow's page in the *Actions* tab does the same on demand for `main`. The tag `latest` moves to the commit it was built from, and the release carries `use-ocl-<version>.vsix` and the same file as `use-ocl.vsix`, whose download link stays the same. For a new version, raise `version` in `package.json`, and with it the version in `java/pom.xml` and `UseLanguageServer.VERSION`.
 
 == Contribute
 

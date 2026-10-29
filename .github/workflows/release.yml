@@ -1,11 +1,22 @@
-# Builds and tests the extension. After every merge (push) to main it replaces
-# the release "latest" with the new package; pull requests are only built and
-# tested. The tests inside VS Code (test/e2e) run locally only.
+# Builds and tests the extension. After a merge (push) to main that changes
+# source files it replaces the release "latest" with the new package; changes
+# to documentation, tests or this automation alone build no release. Pull
+# requests are always built and tested; "Run workflow" on main releases on
+# demand. The tests inside VS Code (test/e2e) run locally only.
 name: Release latest
 
 on:
   push:
     branches: [main]
+    # every other file counts as source: code, grammars, the Dockerfile,
+    # package.json, build.sh, LICENSE (it is part of the package)
+    paths-ignore:
+      - '**.adoc'
+      - '**.md'
+      - 'assets/**'
+      - 'test/**'
+      - '.github/**'
+      - '.gitignore'
   pull_request:
     branches: [main]
   workflow_dispatch:
