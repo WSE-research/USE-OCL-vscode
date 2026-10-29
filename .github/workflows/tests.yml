@@ -67,7 +67,8 @@ jobs:
 
       - name: Install VS Code and Xvfb
         run: |
-          curl -sSfL -o "$RUNNER_TEMP/code.deb" 'https://update.code.visualstudio.com/latest/linux-deb-x64/stable'
+          curl -sSfL --retry 4 --retry-delay 10 --retry-all-errors -o "$RUNNER_TEMP/code.deb" \
+            'https://update.code.visualstudio.com/latest/linux-deb-x64/stable'
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb "$RUNNER_TEMP/code.deb" >/dev/null
           code --version
@@ -79,8 +80,9 @@ jobs:
         run: |
           mkdir -p .build/jacoco .build/coverage .build/logs .build/test-results
           base=https://repo1.maven.org/maven2/org/jacoco
-          curl -sSfL -o .build/jacoco/jacocoagent.jar "$base/org.jacoco.agent/$JACOCO_VERSION/org.jacoco.agent-$JACOCO_VERSION-runtime.jar"
-          curl -sSfL -o .build/jacoco/jacococli.jar "$base/org.jacoco.cli/$JACOCO_VERSION/org.jacoco.cli-$JACOCO_VERSION-nodeps.jar"
+          get() { curl -sSfL --retry 4 --retry-delay 10 --retry-all-errors -o "$1" "$2"; }
+          get .build/jacoco/jacocoagent.jar "$base/org.jacoco.agent/$JACOCO_VERSION/org.jacoco.agent-$JACOCO_VERSION-runtime.jar"
+          get .build/jacoco/jacococli.jar "$base/org.jacoco.cli/$JACOCO_VERSION/org.jacoco.cli-$JACOCO_VERSION-nodeps.jar"
           sha256sum -c - <<EOF
           37ae2f374ad77e85c59c6e5b46565226c3ac3cb460ac19de0bcb844ac2f43e33  .build/jacoco/jacocoagent.jar
           1f2a806225623fbd9f53d1ee0e42a6975323de0adebe01c12fc464ed147d756a  .build/jacoco/jacococli.jar
