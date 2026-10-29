@@ -1,0 +1,12 @@
+-- ein Mitglied leiht ein Medium aus
+!new Mitglied('ada')
+!ada.ausweis := 'A-17'
+!ada.gesperrt := false
+!new Medium('m1')
+!m1.titel := 'Dune'
+!m1.zustand := Zustand::verfuegbar
+!openter ada ausleihen(m1)
+!insert (ada, m1) into Leiht
+!opexit
+? ada.medium->size()
+check

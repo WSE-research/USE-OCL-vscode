@@ -1,0 +1,32 @@
+-- SYNTAX TEST "source.soil" "Soil-Skript für die USE-Shell"
+!new Mitglied('ada')
+-- <- keyword.control.directive.command.soil
+--^^ keyword.control.soil
+--   ^^^^^^^^ entity.name.type.class.soil
+--            ^^^^^ string.quoted.single.use
+!ada.ausweis := 10
+--  ^ punctuation.accessor.use
+--   ^^^^^^^ variable.other.property.use
+--           ^^ keyword.operator.assignment.use
+--              ^^ constant.numeric.use
+!m1.zustand := Zustand::ausgeliehen
+--             ^^^^^^^ entity.name.type.enum.use
+--                      ^^^^^^^^^^^ variable.other.enummember.use
+!insert (ada, m1) into Leiht
+--^^^^^ keyword.control.soil
+--                ^^^^ keyword.control.soil
+--                     ^^^^^ entity.name.type.association.soil
+!openter ada ausleihen(m1)
+--^^^^^^ keyword.control.soil
+--       ^^^ variable.other.object.soil
+--           ^^^^^^^^^ entity.name.function.soil
+!opexit
+--^^^^^ keyword.control.soil
+? Mitglied.allInstances()->size()
+-- <- keyword.control.directive.query.soil
+--         ^^^^^^^^^^^^ support.function.ocl.use
+--                         ^^^^ support.function.collection.use
+-- Kommentar
+-- <------------ comment.line.double-dash.use
+check
+-- <----- keyword.other.command.soil

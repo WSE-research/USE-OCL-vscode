@@ -1,0 +1,93 @@
+-- SYNTAX TEST "source.use" "Modell mit Klassen, Assoziation und Constraints"
+model Bibliothek
+-- <----- keyword.other.use
+--    ^^^^^^^^^^ entity.name.type.model.use
+
+enum Zustand { verfuegbar, ausgeliehen, gesperrt }
+-- <---- keyword.other.use
+--   ^^^^^^^ entity.name.type.enum.use
+
+abstract class Medium < Bestand
+-- <-------- storage.modifier.use
+--       ^^^^^ keyword.other.use
+--             ^^^^^^ entity.name.type.class.use
+--                    ^ punctuation.separator.inheritance.use
+--                      ^^^^^^^ entity.other.inherited-class.use
+attributes
+-- <---------- keyword.other.use
+  titel : String -- Haupttitel
+--^^^^^ variable.other.property.use
+--        ^^^^^^ support.type.primitive.use
+--               ^^^^^^^^^^^^^ comment.line.double-dash.use
+  zustand : Zustand
+--^^^^^^^ variable.other.property.use
+--          ^^^^^^^ entity.name.type.use
+operations
+-- <---------- keyword.other.use
+  leihfrist() : Integer = self.ausleihe->collect(a | a.tage)->sum()
+--^^^^^^^^^ entity.name.function.use
+--              ^^^^^^^ support.type.primitive.use
+--                        ^^^^ variable.language.use
+--                             ^^^^^^^^ variable.other.property.use
+--                                     ^^ keyword.operator.arrow.use
+--                                       ^^^^^^^ support.function.collection.use
+--                                                            ^^^ support.function.collection.use
+end
+-- <--- keyword.other.use
+
+association Leiht between
+-- <----------- keyword.other.use
+--          ^^^^^ entity.name.type.association.use
+--                ^^^^^^^ keyword.other.use
+  Mitglied [0..1] role leser
+--^^^^^^^^ entity.name.type.class.use
+--          ^ constant.numeric.use
+--           ^^ punctuation.separator.range.use
+--                ^^^^ keyword.other.use
+--                     ^^^^^ variable.other.property.role.use
+  Medium [*] role medium
+--^^^^^^ entity.name.type.class.use
+--        ^ keyword.operator.arithmetic.use
+end
+
+constraints
+-- <----------- keyword.other.use
+
+context m : Medium inv M1_AusgeliehenHatLeser:
+-- <------- keyword.other.use
+--      ^ variable.parameter.use
+--          ^^^^^^ entity.name.type.class.use
+--                 ^^^ keyword.other.use
+--                     ^^^^^^^^^^^^^^^^^^^^^^ entity.name.function.constraint.use
+  m.zustand <> Zustand::verfuegbar implies m.leser->notEmpty()
+--          ^^ keyword.operator.comparison.use
+--             ^^^^^^^ entity.name.type.enum.use
+--                      ^^^^^^^^^^ variable.other.enummember.use
+--                                 ^^^^^^^ keyword.operator.wordlike.use
+--                                                  ^^^^^^^^ support.function.collection.use
+
+context Mitglied inv M2: self.ausweis <> 'a--b' and not self.gesperrt
+--                                       ^^^^^^ string.quoted.single.use
+--                                       ^^^^^^ - comment.line.double-dash.use
+--                                              ^^^ keyword.operator.wordlike.use
+--                                                  ^^^ keyword.operator.wordlike.use
+
+/* Block-
+-- <-- comment.block.use
+   kommentar */
+-- ^^^^^^^^^ comment.block.use
+context Mitglied::ausleihen(m : Medium)
+--      ^^^^^^^^ entity.name.type.class.use
+--                ^^^^^^^^^ entity.name.function.use
+--                              ^^^^^^ entity.name.type.use
+  pre NochFrei: Set{'0', '1'}->includes(self.ausweis.substring(1, 1))
+--^^^ keyword.other.use
+--    ^^^^^^^^ entity.name.function.constraint.use
+--              ^^^ support.type.collection.use
+--                  ^^^ string.quoted.single.use
+--                                                   ^^^^^^^^^ entity.name.function.use
+  post Dazu: self.medium = Mitglied.allInstances()->any(x | x.medium@pre->including(m))
+--^^^^ keyword.other.use
+--                                  ^^^^^^^^^^^^ support.function.ocl.use
+--                                                                  ^^^^ keyword.other.pre.use
+--                                                                        ^^^^^^^^^ support.function.collection.use

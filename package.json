@@ -1,0 +1,157 @@
+{
+  "name": "use-ocl",
+  "displayName": "USE (UML/OCL)",
+  "description": "Hervorhebung und Prüfung für USE-Modelle (.use) und Soil-Skripte (.soil), geprüft mit dem Compiler von USE 7.5",
+  "version": "0.1.0",
+  "publisher": "htwk-se",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WSE-research/USE-OCL-vscode.git"
+  },
+  "private": true,
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "USE",
+    "UML",
+    "OCL",
+    "Soil"
+  ],
+  "main": "./extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "use",
+        "aliases": [
+          "USE",
+          "use"
+        ],
+        "extensions": [
+          ".use"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "soil",
+        "aliases": [
+          "USE Soil",
+          "soil"
+        ],
+        "extensions": [
+          ".soil"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "use",
+        "scopeName": "source.use",
+        "path": "./syntaxes/use.tmLanguage.json"
+      },
+      {
+        "language": "soil",
+        "scopeName": "source.soil",
+        "path": "./syntaxes/soil.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "useOcl.restartServer",
+        "title": "Sprachserver neu starten",
+        "category": "USE"
+      },
+      {
+        "command": "useOcl.buildImage",
+        "title": "Container-Image bauen",
+        "category": "USE"
+      }
+    ],
+    "configuration": {
+      "title": "USE (UML/OCL)",
+      "properties": {
+        "useOcl.server.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "container",
+            "java"
+          ],
+          "enumDescriptions": [
+            "Lokales Java, wenn Java 21 und eine USE-Installation eingestellt sind, sonst Container",
+            "Im Container-Image von run-use.sh (Docker oder Podman)",
+            "Lokales Java 21 mit der USE-Installation aus useOcl.useHome"
+          ],
+          "default": "auto",
+          "description": "Wie der Sprachserver läuft, der die Dateien prüft."
+        },
+        "useOcl.useHome": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Ordner einer USE-7.5-Installation (enthält lib/use-core-7.5.0.jar), für den Betrieb ohne Container. Leer: Umgebungsvariable USE_HOME."
+        },
+        "useOcl.javaHome": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Java 21 oder neuer für den Betrieb ohne Container. Leer: JAVA_HOME bzw. java im PATH."
+        },
+        "useOcl.container.engine": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "docker",
+            "podman"
+          ],
+          "default": "auto",
+          "description": "Container-Werkzeug; auto nimmt das erste, das läuft (zuerst Docker), wie run-use.sh."
+        },
+        "useOcl.container.image": {
+          "type": "string",
+          "default": "use-ocl:7.5.0",
+          "scope": "machine",
+          "description": "Image mit USE unter /opt/use, wie es run-use.sh baut."
+        },
+        "useOcl.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Protokolliert den Verkehr mit dem Sprachserver im Ausgabekanal USE (zur Fehlersuche)."
+        }
+      }
+    },
+    "taskDefinitions": [
+      {
+        "type": "useOcl",
+        "properties": {}
+      }
+    ]
+  },
+  "scripts": {
+    "package": "vsce package",
+    "test:grammar": "vscode-tmgrammar-test -g syntaxes/use.tmLanguage.json -g syntaxes/soil.tmLanguage.json \"test/grammar/*.test.*\""
+  },
+  "dependencies": {
+    "vscode-languageclient": "9.0.1"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "4.1.0",
+    "vscode-tmgrammar-test": "0.1.3"
+  }
+}

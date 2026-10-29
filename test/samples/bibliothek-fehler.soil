@@ -1,0 +1,6 @@
+new Medium('m2')
+!m1.titel = 'Dune'
+!insert (ada m1) into Leiht
+?? ada.medium->size( +
+!
+hilfe

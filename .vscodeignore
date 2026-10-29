@@ -1,0 +1,6 @@
+java/**
+test/**
+.build/**
+build.sh
+.gitignore
+**/*.vsix

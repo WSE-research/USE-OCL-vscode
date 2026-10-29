@@ -1,0 +1,41 @@
+model Bibliothek
+
+enum Zustand { verfuegbar, ausgeliehen, gesperrt }
+
+class Mitglied
+attributes
+  ausweis : String
+  gesperrt : Boolen
+operations
+  anzahl() : Integer = self.medium->size()
+  ausleihen(m : Medium)
+end
+
+class Medium
+attributes
+  titel : String
+  zustand : Zustand
+end
+
+association Leiht between
+  Mitglied [0..1] role leser
+  Medium [*] role medium
+end
+
+constraints
+
+context Medium inv M1_AusgeliehenHatLeser:
+  self.zustand = Zustand::ausgeliehen implies self.leser->notEmpty()
+
+context Mitglied inv M2_HoechstensFuenf:
+  self.medien->size() <= 5
+
+context Mitglied inv M3_AusweisFormat:
+  Set{1, 2}->includes(self.ausweis)
+
+context Mitglied inv M4_Typfehler:
+  self.medium->size() + true > 0
+
+context Mitglied::ausleihen(m : Medium)
+  pre NochFrei: m.leser->isEmpty()
+  post Dazu: self.medium = self.medium@pre->including(m)

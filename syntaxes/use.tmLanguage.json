@@ -1,0 +1,266 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "USE",
+  "scopeName": "source.use",
+  "comment": "USE-Modelle (UML/OCL), Schlüsselwörter nach den Grammatiken von USE 7.5 (grammars/base/*.gpart)",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#declarations" },
+    { "include": "#structure" },
+    { "include": "#expression" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-dash.use",
+          "match": "(--).*$",
+          "captures": { "1": { "name": "punctuation.definition.comment.use" } }
+        },
+        {
+          "name": "comment.line.double-slash.use",
+          "match": "(//).*$",
+          "captures": { "1": { "name": "punctuation.definition.comment.use" } }
+        },
+        {
+          "name": "comment.block.use",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "captures": { "0": { "name": "punctuation.definition.comment.use" } }
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(model)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "keyword.other.use" },
+            "2": { "name": "entity.name.type.model.use" }
+          }
+        },
+        {
+          "match": "\\b(?:(abstract)\\s+)?(class|associationclass|associationClass|dataType|signal)\\s+([A-Za-z_]\\w*)(?:\\s*(<)\\s*([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
+          "captures": {
+            "1": { "name": "storage.modifier.use" },
+            "2": { "name": "keyword.other.use" },
+            "3": { "name": "entity.name.type.class.use" },
+            "4": { "name": "punctuation.separator.inheritance.use" },
+            "5": { "name": "entity.other.inherited-class.use" }
+          }
+        },
+        {
+          "match": "\\b(association|composition|aggregation)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "keyword.other.use" },
+            "2": { "name": "entity.name.type.association.use" }
+          }
+        },
+        {
+          "match": "\\b(enum)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "keyword.other.use" },
+            "2": { "name": "entity.name.type.enum.use" }
+          }
+        },
+        {
+          "match": "\\b(context)\\s+(?:([A-Za-z_]\\w*)\\s*(:)(?!:)\\s*)?([A-Za-z_]\\w*)(?:\\s*(::)\\s*([A-Za-z_]\\w*))?",
+          "captures": {
+            "1": { "name": "keyword.other.use" },
+            "2": { "name": "variable.parameter.use" },
+            "3": { "name": "punctuation.separator.colon.use" },
+            "4": { "name": "entity.name.type.class.use" },
+            "5": { "name": "punctuation.separator.scope.use" },
+            "6": { "name": "entity.name.function.use" }
+          }
+        },
+        {
+          "match": "\\b(inv|pre|post)\\b(?:\\s+([A-Za-z_]\\w*))?\\s*(:)",
+          "captures": {
+            "1": { "name": "keyword.other.use" },
+            "2": { "name": "entity.name.function.constraint.use" },
+            "3": { "name": "punctuation.separator.colon.use" }
+          }
+        },
+        {
+          "match": "\\b(role)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "keyword.other.use" },
+            "2": { "name": "variable.other.property.role.use" }
+          }
+        },
+        {
+          "match": "\\b(psm|bsm)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "keyword.other.use" },
+            "2": { "name": "entity.name.type.statemachine.use" }
+          }
+        },
+        {
+          "comment": "Klasse am Assoziationsende: Ticket [*] role ticket",
+          "match": "^\\s*([A-Za-z_]\\w*)\\s*(?=\\[)",
+          "captures": { "1": { "name": "entity.name.type.class.use" } }
+        },
+        {
+          "comment": "Operation im Abschnitt operations: name(...)",
+          "match": "^\\s*(?!(?:if|not|let|in|and|or|xor|implies|then|else|begin|declare|for|while|new|insert|delete|destroy|self|Set|Bag|Sequence|OrderedSet|Collection|Tuple)\\b)([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": { "1": { "name": "entity.name.function.use" } }
+        },
+        {
+          "comment": "Attribut im Abschnitt attributes: name : Typ",
+          "match": "^\\s*(?!(?:model|class|abstract|attributes|operations|constraints|statemachines|states|transitions|end|association|composition|aggregation|associationclass|associationClass|between|role|enum|dataType|signal|psm|bsm|context|inv|pre|post|begin|declare|var|let|if|then|else|for|while|self|result)\\b)([A-Za-z_]\\w*)(?=\\s*:(?![:=]))",
+          "captures": { "1": { "name": "variable.other.property.use" } }
+        }
+      ]
+    },
+    "structure": {
+      "patterns": [
+        {
+          "name": "keyword.other.use",
+          "match": "\\b(model|class|abstract|attributes|operations|constraints|statemachines|states|transitions|end|association|composition|aggregation|associationclass|associationClass|between|role|ordered|subsets|union|redefines|derived|derive|init|qualifier|enum|dataType|signal|psm|bsm|import|from|context|inv|pre|post|existential|begin|declare|var)\\b"
+        }
+      ]
+    },
+    "expression": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        {
+          "name": "constant.language.use",
+          "match": "\\b(true|false|null|oclUndefined|Undefined|invalid)\\b"
+        },
+        {
+          "name": "variable.language.use",
+          "match": "\\b(self|result)\\b"
+        },
+        {
+          "name": "keyword.other.pre.use",
+          "match": "@pre\\b"
+        },
+        {
+          "match": "\\b(new)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "keyword.control.use" },
+            "2": { "name": "entity.name.type.class.use" }
+          }
+        },
+        {
+          "name": "keyword.control.use",
+          "match": "\\b(if|then|else|endif|let|in|iterate|new|create|destroy|insert|into|delete|set|openter|opexit|for|do|while)\\b"
+        },
+        {
+          "name": "keyword.operator.wordlike.use",
+          "match": "\\b(and|or|xor|not|implies|div|mod)\\b"
+        },
+        {
+          "name": "support.type.primitive.use",
+          "match": "\\b(Integer|Real|String|Boolean|UnlimitedNatural|OclAny|OclVoid|OclInvalid|OclType)\\b"
+        },
+        {
+          "name": "support.type.collection.use",
+          "match": "\\b(Set|Bag|Sequence|OrderedSet|Collection|Tuple)\\b"
+        },
+        {
+          "match": "(->)\\s*([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "keyword.operator.arrow.use" },
+            "2": { "name": "support.function.collection.use" }
+          }
+        },
+        {
+          "match": "(\\.)\\s*(oclIsKindOf|oclIsTypeOf|oclAsType|oclIsUndefined|oclIsInvalid|oclIsNew|oclInState|oclIsInState|allInstances|selectByKind|selectByType)\\b",
+          "captures": {
+            "1": { "name": "punctuation.accessor.use" },
+            "2": { "name": "support.function.ocl.use" }
+          }
+        },
+        {
+          "name": "punctuation.separator.range.use",
+          "match": "\\.\\."
+        },
+        {
+          "match": "(\\.)\\s*([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "punctuation.accessor.use" },
+            "2": { "name": "entity.name.function.use" }
+          }
+        },
+        {
+          "match": "(\\.)\\s*([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "punctuation.accessor.use" },
+            "2": { "name": "variable.other.property.use" }
+          }
+        },
+        {
+          "match": "\\b([A-Za-z_]\\w*)\\s*(::)\\s*([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "entity.name.type.enum.use" },
+            "2": { "name": "punctuation.separator.scope.use" },
+            "3": { "name": "variable.other.enummember.use" }
+          }
+        },
+        {
+          "match": "(#)([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "punctuation.definition.enummember.use" },
+            "2": { "name": "variable.other.enummember.use" }
+          }
+        },
+        {
+          "comment": "Typangabe nach einem Doppelpunkt: x : Ticket",
+          "match": "(:)(?![:=])\\s*(?!(?:Integer|Real|String|Boolean|UnlimitedNatural|OclAny|OclVoid|OclInvalid|OclType|Set|Bag|Sequence|OrderedSet|Collection|Tuple)\\b)([A-Z]\\w*)\\b(?!\\s*::)",
+          "captures": {
+            "1": { "name": "punctuation.separator.colon.use" },
+            "2": { "name": "entity.name.type.use" }
+          }
+        },
+        {
+          "name": "keyword.operator.assignment.use",
+          "match": ":="
+        },
+        {
+          "name": "keyword.operator.comparison.use",
+          "match": "<>|<=|>=|=|<|>"
+        },
+        {
+          "name": "keyword.operator.arithmetic.use",
+          "match": "[-+*/]"
+        },
+        {
+          "name": "punctuation.separator.use",
+          "match": "\\||::|:|,|;"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.use",
+          "begin": "'",
+          "end": "'",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.use" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.use" } },
+          "patterns": [{ "name": "constant.character.escape.use", "match": "\\\\." }]
+        },
+        {
+          "name": "string.quoted.double.use",
+          "begin": "\"",
+          "end": "\"",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.use" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.use" } },
+          "patterns": [{ "name": "constant.character.escape.use", "match": "\\\\." }]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.use",
+          "match": "\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b"
+        }
+      ]
+    }
+  }
+}

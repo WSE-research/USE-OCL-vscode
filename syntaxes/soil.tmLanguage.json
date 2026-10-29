@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "USE Soil",
+  "scopeName": "source.soil",
+  "comment": "Soil-Skripte für die USE-Shell: eine Zeile je Befehl, Soil-Anweisungen nach !, Abfragen nach ? und ??",
+  "patterns": [
+    { "include": "source.use#comments" },
+    {
+      "match": "^\\s*(!!?)",
+      "captures": { "1": { "name": "keyword.control.directive.command.soil" } }
+    },
+    {
+      "match": "^\\s*(\\?\\??|:)(?!=)",
+      "captures": { "1": { "name": "keyword.control.directive.query.soil" } }
+    },
+    {
+      "comment": "Befehle der USE-Shell (Shell.processLine)",
+      "match": "^\\s*(open|reopen|readq|read|check|reset|quit|exit|q|info|step on|undo|redo|write|help|constraints|gen|reload extensions|coverage|plugins|delay|debug|genvcg|genmm|genmonitor|net)\\b",
+      "captures": { "1": { "name": "keyword.other.command.soil" } }
+    },
+    {
+      "match": "\\b(new)\\s+([A-Za-z_]\\w*)",
+      "captures": {
+        "1": { "name": "keyword.control.soil" },
+        "2": { "name": "entity.name.type.class.soil" }
+      }
+    },
+    {
+      "match": "\\b(into|from)\\s+([A-Za-z_]\\w*)",
+      "captures": {
+        "1": { "name": "keyword.control.soil" },
+        "2": { "name": "entity.name.type.association.soil" }
+      }
+    },
+    {
+      "match": "\\b(openter)\\s+([A-Za-z_]\\w*)\\s+([A-Za-z_]\\w*)",
+      "captures": {
+        "1": { "name": "keyword.control.soil" },
+        "2": { "name": "variable.other.object.soil" },
+        "3": { "name": "entity.name.function.soil" }
+      }
+    },
+    {
+      "name": "keyword.control.soil",
+      "match": "\\b(new|create|destroy|insert|into|delete|from|set|openter|opexit|declare|begin|end|if|then|else|for|in|do|while|let)\\b"
+    },
+    { "include": "source.use#expression" }
+  ]
+}
