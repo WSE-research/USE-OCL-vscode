@@ -18,8 +18,11 @@ const LIMIT = 60000;
 const SEVERITIES = ['Critical', 'High', 'Moderate', 'Low', 'Info'];
 
 const env = process.env;
+const event = JSON.parse((env.GITHUB_EVENT_PATH && fs.existsSync(env.GITHUB_EVENT_PATH)
+  && fs.readFileSync(env.GITHUB_EVENT_PATH, 'utf8')) || '{}');
 const repo = env.GITHUB_REPOSITORY || '';
-const sha = env.GITHUB_SHA || '';
+// for a pull request GITHUB_SHA is a temporary merge commit; name the pull request's own commit
+const sha = (event.pull_request && event.pull_request.head.sha) || env.GITHUB_SHA || '';
 const server = env.GITHUB_SERVER_URL || 'https://github.com';
 const runUrl = `${server}/${repo}/actions/runs/${env.GITHUB_RUN_ID}`;
 
@@ -267,11 +270,10 @@ async function api(method, url, body) {
 
 /** The pull request of this run: the one it runs for, or the one whose merge it built. */
 async function pullRequest() {
-  const event = JSON.parse(read(env.GITHUB_EVENT_PATH) || '{}');
   if (event.pull_request) return event.pull_request.number;
   if (env.GITHUB_EVENT_NAME !== 'push') return null;
-  const pulls = await api('GET', `/repos/${repo}/commits/${sha}/pulls`);
-  const merged = pulls.find((p) => p.merge_commit_sha === sha) || pulls.find((p) => p.merged_at);
+  const pulls = await api('GET', `/repos/${repo}/commits/${env.GITHUB_SHA}/pulls`);
+  const merged = pulls.find((p) => p.merge_commit_sha === env.GITHUB_SHA) || pulls.find((p) => p.merged_at);
   return merged ? merged.number : null;
 }
 

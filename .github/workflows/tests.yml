@@ -134,6 +134,10 @@ jobs:
           convert lsp-container "Language server, container" "${{ steps.lsp-container.outcome }}"
           convert e2e-container "VS Code, container" "${{ steps.e2e-container.outcome }}"
           convert e2e-java "VS Code, local Java" "${{ steps.e2e-java.outcome }}"
+          # the grammar reports lack a time, which the test reporter would show as NaN
+          for f in .build/test-results/grammar/*.xml; do
+            [[ -f $f ]] && sed -i '0,/<testsuite/s//<testsuite time="0"/' "$f"
+          done
           if [[ -f .build/coverage/jacoco.exec && -d java/target/classes ]]; then
             java -jar .build/jacoco/jacococli.jar report .build/coverage/jacoco.exec --name use-lsp \
               --classfiles java/target/classes --sourcefiles java/src/main/java \
@@ -150,7 +154,8 @@ jobs:
           name: Test results
           path: 'java/target/surefire-reports/TEST-*.xml,.build/test-results/**/*.xml'
           reporter: java-junit
-          fail-on-error: false   # the failed test steps already fail the job
+          use-actions-summary: false   # a check run; the job summary gets the report below
+          fail-on-error: false         # the failed test steps already fail the job
           fail-on-empty: false
 
       - name: Qodana
