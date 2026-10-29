@@ -44,7 +44,11 @@ final class UseChecker {
     record Message(int line, int column, String text, Severity severity) {
     }
 
-    private record Pass(List<Message> messages, String logged) {
+    /** Die Meldungen zu einem Modell und das übersetzte Modell (null bei Fehlern). */
+    record Checked(List<Message> messages, MModel model) {
+    }
+
+    private record Pass(List<Message> messages, String logged, MModel model) {
     }
 
     /** Eingabename für einzelne Soil-Zeilen, wie in der USE-Shell. */
@@ -85,7 +89,7 @@ final class UseChecker {
      * Prüft ein Modell wie {@code use -c}. {@code base} dient zum Auflösen von
      * {@code import} und darf null sein.
      */
-    List<Message> checkModel(String text, String name, URI base) {
+    Checked checkModel(String text, String name, URI base) {
         Pass first = compileModel(text, name, base);
         List<Message> messages = new ArrayList<>(first.messages());
         if (first.logged().contains("Warning")) {
@@ -93,22 +97,24 @@ final class UseChecker {
         } else if (!first.logged().isBlank()) {
             System.err.print(first.logged());
         }
-        return messages;
+        return new Checked(messages, first.model());
+    }
+
+    /** Übersetzt ein Modell ohne Meldungen; null, wenn es Fehler hat. */
+    MModel compile(String text, String name, URI base) {
+        return compileModel(text, name, base).model();
     }
 
     private Pass compileModel(String text, String name, URI base) {
         StringWriter out = new StringWriter();
         PrintWriter err = new PrintWriter(out);
         InputStream in = stream(text);
-        String logged = Capture.during(() -> {
-            if (base != null) {
-                USECompiler.compileSpecification(in, name, base, err, new ModelFactory());
-            } else {
-                USECompiler.compileSpecification(in, name, err, new ModelFactory());
-            }
-        });
+        MModel[] model = new MModel[1];
+        String logged = Capture.during(() -> model[0] = base != null
+                ? USECompiler.compileSpecification(in, name, base, err, new ModelFactory())
+                : USECompiler.compileSpecification(in, name, err, new ModelFactory()));
         err.flush();
-        return new Pass(parse(out.toString(), name, false), logged);
+        return new Pass(parse(out.toString(), name, false), logged, model[0]);
     }
 
     /**

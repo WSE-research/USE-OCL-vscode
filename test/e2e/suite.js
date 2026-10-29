@@ -1,6 +1,7 @@
 'use strict';
 // Läuft in VS Code (über --extensionTestsPath, gestartet von run.js): öffnet die
-// Beispiele, wartet auf die Diagnosen des Sprachservers und ändert ein Dokument.
+// Beispiele, wartet auf die Diagnosen des Sprachservers, ändert ein Dokument und
+// fragt Vorschläge der Vervollständigung ab.
 // Die Ergebnisse gehen in die Datei USE_E2E_RESULT.
 
 const fs = require('fs');
@@ -30,6 +31,12 @@ async function open(name) {
   const doc = await vscode.workspace.openTextDocument(path.join(SAMPLES, name));
   await vscode.window.showTextDocument(doc, { preview: false });
   return doc;
+}
+
+async function completions(doc, after) {
+  const position = doc.positionAt(doc.getText().indexOf(after) + after.length);
+  const list = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', doc.uri, position);
+  return list.items.map((i) => (typeof i.label === 'string' ? i.label : i.label.label));
 }
 
 function count(doc, severity) {
@@ -66,6 +73,14 @@ async function suite() {
   check(await waitFor(() => count(clean) === 1, 15000), `nach dem Tippen: ${count(clean)} Diagnose (erwartet 1)`);
   await vscode.commands.executeCommand('undo');
   check(await waitFor(() => count(clean) === 0, 15000), `nach Rückgängig: ${count(clean)} Diagnosen (erwartet 0)`);
+
+  // Vervollständigung: im Modell aus dem Modell, im Skript aus den Modellen daneben,
+  // die die Erweiterung dem Server schickt
+  let labels = await completions(clean, 'implies self.');
+  check(labels.includes('leser') && labels.includes('titel'), `Vervollständigung nach self.: ${labels.slice(0, 6).join(', ')}`);
+  labels = await completions(cleanScript, '!ada.');
+  check(labels.includes('ausweis') && labels.includes('ausleihen'),
+    `Vervollständigung im Skript nach ada.: ${labels.slice(0, 6).join(', ')}`);
   await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
 }
 

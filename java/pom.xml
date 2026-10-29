@@ -7,7 +7,7 @@
 
   <groupId>de.htwk.se</groupId>
   <artifactId>use-lsp</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <packaging>jar</packaging>
 
   <properties>
@@ -32,6 +32,14 @@
       <version>7.5.0</version>
       <scope>system</scope>
       <systemPath>${use.home}/lib/use-core-7.5.0.jar</systemPath>
+    </dependency>
+    <!-- nur zum Übersetzen: use-gui.jar enthält Guava, den Typ von ExpStdOp.opmap -->
+    <dependency>
+      <groupId>org.tzi.use</groupId>
+      <artifactId>use-gui</artifactId>
+      <version>7.5.0</version>
+      <scope>system</scope>
+      <systemPath>${use.home}/lib/use-gui.jar</systemPath>
     </dependency>
   </dependencies>
 

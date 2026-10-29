@@ -1,7 +1,7 @@
 'use strict';
 // Prüft den Sprachserver über LSP: öffnet die Beispiele in test/samples, vergleicht
-// die Diagnosen mit den erwarteten, ändert und schließt ein Dokument und beendet
-// den Server. Aufruf (im Ordner use-vscode, nach ./build.sh):
+// die Diagnosen mit den erwarteten, ändert und schließt ein Dokument, prüft die
+// Vervollständigung und beendet den Server. Aufruf (im Ordner use-vscode, nach ./build.sh):
 //
 //   node test/server-test.js              lokales Java (JAVA_HOME, USE_HOME oder .build/use)
 //   node test/server-test.js --container  im Image use-ocl:7.5.0 (USE_ENGINE, sonst docker)
@@ -37,6 +37,33 @@ const EXPECTED = {
   ],
 };
 const SEVERITY = { 1: 'error', 2: 'warning', 3: 'information', 4: 'hint' };
+
+// Vervollständigung: Text, der an das Beispiel angehängt wird (§ ist die
+// Schreibmarke), auslösendes Zeichen, Namen, die vorkommen müssen bzw. nicht dürfen
+const COMPLETIONS = {
+  'bibliothek.use': [
+    ['context Medium inv T:\n  self.§', '.', ['titel', 'zustand', 'leser', 'oclIsKindOf'], ['ausweis', 'medium']],
+    ['context Mitglied inv T:\n  self.medium->§', '>', ['notEmpty', 'includes', 'select', 'forAll'], ['first', 'titel']],
+    ['context Medium inv T:\n  self.zustand = Zustand::§', ':', ['verfuegbar', 'ausgeliehen', 'gesperrt'], ['Medium']],
+    ['context Mitglied inv T:\n  self.medium->forAll(x | x.§', '.', ['titel', 'leser'], ['ausweis']],
+    ['context Mitglied inv T:\n  medi§', null, ['medium', 'self', 'Medium', 'implies'], []],
+    ['context Mitglied::ausleihen(m : Medium)\n  post P: self.medium->includes(m) and m.§', '.', ['titel'], []],
+    ['context Mitglied inv T:\n  self.medium->select(m : §', null, ['Integer', 'Medium', 'Zustand'], ['self']],
+    ['context Mitglied inv T:\n  self.medium->size() >§', '>', [], ['select', 'size']],
+    ['context Mitglied inv T:\n  self.anzahl() >= 0 -- self.§', '.', [], ['titel', 'ausweis']],
+    ['§', null, ['class', 'association', 'context', 'enum'], []],
+  ],
+  'bibliothek.soil': [
+    ['!ada.§', '.', ['ausweis', 'medium', 'anzahl', 'ausleihen'], ['titel']],
+    ['? ada.§', '.', ['ausweis', 'anzahl'], ['ausleihen']],
+    ['? ada.medium->select(x | x.§', '.', ['titel', 'zustand'], []],
+    ['!new §', null, ['Mitglied', 'Medium'], ['ada', 'Zustand']],
+    ['!insert (ada, m1) into §', null, ['Leiht'], []],
+    ['!m1.zustand := Zustand::§', ':', ['verfuegbar'], []],
+    ['!destroy §', null, ['ada', 'm1'], ['Mitglied']],
+    ['che§', null, ['check', '!new'], []],
+  ],
+};
 
 function serverCommand() {
   if (process.argv.includes('--container')) {
@@ -102,10 +129,20 @@ async function main() {
     }
     return received.get(uri).shift();
   }
+  // der Client schickt dem Server die Modelle neben einem Soil-Skript
+  let modelRequests = 0;
+  connection.onRequest('useOcl/models', ({ uri }) => {
+    modelRequests++;
+    const folder = path.dirname(new URL(uri).pathname);
+    return fs.readdirSync(folder).filter((f) => f.endsWith('.use'))
+      .map((f) => ({ uri: pathToFileURL(path.join(folder, f)).href, text: fs.readFileSync(path.join(folder, f), 'utf8') }));
+  });
   connection.listen();
 
   const init = await connection.sendRequest('initialize', { processId: process.pid, rootUri: null, capabilities: {} });
   check(init.capabilities.textDocumentSync.change === 1, 'initialize: vollständige Synchronisation');
+  check(init.capabilities.completionProvider && init.capabilities.completionProvider.triggerCharacters.includes('.'),
+    'initialize: Vervollständigung mit "." als Auslöser');
   connection.sendNotification('initialized', {});
 
   const uris = {};
@@ -138,6 +175,39 @@ async function main() {
   connection.sendNotification('textDocument/didClose', { textDocument: { uri: uris['bibliothek-fehler.use'] } });
   d = await nextDiagnostics(uris['bibliothek-fehler.use']);
   check(d.diagnostics.length === 0, 'didClose: Diagnosen gelöscht');
+
+  // Vervollständigung: die Modelle sind beim Tippen unvollständig, der Server
+  // nimmt die letzte fehlerfreie Fassung (bibliothek.use ist gerade fehlerfrei)
+  let version = 10;
+  for (const [name, cases] of Object.entries(COMPLETIONS)) {
+    const original = fs.readFileSync(path.join(SAMPLES, name), 'utf8');
+    for (const [appended, trigger, wanted, unwanted] of cases) {
+      const text = `${original}\n${appended}`;
+      const at = text.indexOf('§');
+      const lines = text.slice(0, at).split('\n');
+      connection.sendNotification('textDocument/didChange', {
+        textDocument: { uri: uris[name], version: ++version }, contentChanges: [{ text: text.replace('§', '') }],
+      });
+      const result = await connection.sendRequest('textDocument/completion', {
+        textDocument: { uri: uris[name] },
+        position: { line: lines.length - 1, character: lines[lines.length - 1].length },
+        context: trigger ? { triggerKind: 2, triggerCharacter: trigger } : { triggerKind: 1 },
+      });
+      const labels = (Array.isArray(result) ? result : result.items).map((i) => i.label);
+      const missing = wanted.filter((w) => !labels.includes(w));
+      const extra = unwanted.filter((u) => labels.includes(u));
+      const where = appended.split('\n').pop().replace('§', '|');
+      check(!missing.length && !extra.length && (wanted.length || !labels.length || unwanted.length),
+        `Vervollständigung ${name}: ${where} (${labels.length} Vorschläge)`);
+      if (missing.length || extra.length) {
+        console.log('     fehlt:', missing, 'zu viel:', extra, 'erhalten:', labels.slice(0, 30));
+      }
+    }
+    connection.sendNotification('textDocument/didChange', {
+      textDocument: { uri: uris[name], version: ++version }, contentChanges: [{ text: original }],
+    });
+  }
+  check(modelRequests > 0, `Vervollständigung in Skripten: Modelle beim Client angefragt (${modelRequests}-mal)`);
 
   await connection.sendRequest('shutdown');
   connection.sendNotification('exit');

@@ -1,7 +1,7 @@
 'use strict';
 // VS Code-Erweiterung für USE (UML-based Specification Environment): Hervorhebung
-// über die Grammatiken in syntaxes/, Prüfung über den Sprachserver in server/
-// (Java, nutzt den Compiler von USE selbst). Der Server läuft im Container-Image
+// über die Grammatiken in syntaxes/, Prüfung und Autovervollständigung über den
+// Sprachserver in server/ (Java, nutzt den Compiler von USE selbst). Der Server läuft im Container-Image
 // von run-use.sh oder mit einem lokalen Java 21 und einer USE-Installation.
 
 const vscode = require('vscode');
@@ -76,7 +76,44 @@ async function start(context) {
       outputChannel: output,
     },
   );
+  client.onRequest('useOcl/models', (params) => modelsNextTo(params.uri));
   await client.start();
+}
+
+/**
+ * Die Modelle (.use) im Ordner eines Soil-Skripts, für die Vervollständigung im
+ * Skript; offene Modelle mit ihrem Text aus dem Editor. Der Server liest selbst
+ * keine Dateien.
+ */
+async function modelsNextTo(uri) {
+  const script = vscode.Uri.parse(uri);
+  const openModels = vscode.workspace.textDocuments.filter((d) => d.languageId === 'use');
+  if (script.scheme === 'untitled') {
+    return openModels.map((d) => ({ uri: d.uri.toString(), text: d.getText() }));
+  }
+  const folder = vscode.Uri.joinPath(script, '..');
+  let entries;
+  try {
+    entries = await vscode.workspace.fs.readDirectory(folder);
+  } catch {
+    return [];
+  }
+  const names = entries
+    .filter(([name, type]) => type === vscode.FileType.File && name.endsWith('.use'))
+    .map(([name]) => name)
+    .slice(0, 20);
+  const models = [];
+  for (const name of names) {
+    const file = vscode.Uri.joinPath(folder, name);
+    const doc = openModels.find((d) => d.uri.toString() === file.toString());
+    try {
+      const text = doc ? doc.getText() : new TextDecoder().decode(await vscode.workspace.fs.readFile(file));
+      models.push({ uri: file.toString(), text });
+    } catch {
+      // nicht lesbar: ohne dieses Modell
+    }
+  }
+  return models;
 }
 
 /** Wie der Server starten kann: lokales Java oder Container, je nach useOcl.server.mode. */

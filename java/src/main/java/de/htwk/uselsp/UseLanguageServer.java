@@ -1,7 +1,9 @@
 package de.htwk.uselsp;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
 import org.eclipse.lsp4j.InitializeParams;
@@ -20,7 +22,7 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 /** Lebenszyklus des Servers; die eigentliche Arbeit macht {@link UseDocuments}. */
 final class UseLanguageServer implements LanguageServer, LanguageClientAware {
 
-    static final String VERSION = "0.1.0";
+    static final String VERSION = "0.2.0";
 
     private final UseDocuments documents;
     private final WorkspaceService workspace = new WorkspaceService() {
@@ -45,6 +47,8 @@ final class UseLanguageServer implements LanguageServer, LanguageClientAware {
         sync.setSave(new SaveOptions(false));
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(sync);
+        // "." für Elemente, ">" für "->", ":" für "::", "!" für Soil-Anweisungen
+        capabilities.setCompletionProvider(new CompletionOptions(false, List.of(".", ">", ":", "!")));
         return CompletableFuture.completedFuture(
                 new InitializeResult(capabilities, new ServerInfo("USE-Sprachserver", VERSION)));
     }

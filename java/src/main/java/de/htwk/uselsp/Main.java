@@ -6,7 +6,6 @@ import java.nio.file.Path;
 
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
-import org.eclipse.lsp4j.services.LanguageClient;
 
 /**
  * Sprachserver für USE-Modelle (.use) und Soil-Skripte (.soil), spricht LSP über
@@ -27,7 +26,8 @@ public final class Main {
         Capture.install();
 
         UseLanguageServer server = new UseLanguageServer(new UseChecker(useHome()));
-        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, in, out);
+        Launcher<UseClient> launcher = new LSPLauncher.Builder<UseClient>().setLocalService(server)
+                .setRemoteInterface(UseClient.class).setInput(in).setOutput(out).create();
         server.connect(launcher.getRemoteProxy());
         launcher.startListening().get();
         System.exit(0);

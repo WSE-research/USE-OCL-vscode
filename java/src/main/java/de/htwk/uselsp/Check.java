@@ -32,7 +32,7 @@ public final class Check {
             Path file = Path.of(arg);
             String text = Files.readString(file);
             List<Message> messages = arg.endsWith(".soil") ? checker.checkSoil(text)
-                    : checker.checkModel(text, file.getFileName().toString(), file.toUri());
+                    : checker.checkModel(text, file.getFileName().toString(), file.toUri()).messages();
             for (Diagnostic d : Diagnostics.of(messages, text)) {
                 out.printf("%s:%d:%d: %s: %s%n", arg, d.getRange().getStart().getLine() + 1,
                         d.getRange().getStart().getCharacter() + 1, d.getSeverity().name().toLowerCase(),
