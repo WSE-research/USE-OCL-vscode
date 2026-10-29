@@ -5,3 +5,5 @@ build.sh
 .gitignore
 **/*.vsix
 .github/**
+assets/**
+README.adoc
