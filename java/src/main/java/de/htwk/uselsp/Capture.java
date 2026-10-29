@@ -6,10 +6,10 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Fängt ab, was USE nach System.out und System.err schreibt: während einer
- * Prüfung im prüfenden Thread in einen Puffer, sonst nach stderr. USE meldet
- * manche Warnungen nur über {@code org.tzi.use.util.Log}, und das schreibt nach
- * System.out, also mitten in den Protokollkanal.
+ * Captures what USE writes to System.out and System.err: during a check, output
+ * from the checking thread goes to a buffer, everything else to stderr. USE reports
+ * some warnings only via {@code org.tzi.use.util.Log}, which writes to System.out,
+ * i.e. right into the protocol channel.
  */
 final class Capture extends OutputStream {
 
@@ -23,7 +23,7 @@ final class Capture extends OutputStream {
         this.stderr = stderr;
     }
 
-    /** Lenkt System.out und System.err um; vor der ersten USE-Klasse aufrufen. */
+    /** Redirects System.out and System.err; call before the first USE class loads. */
     static synchronized void install() {
         if (instance != null) {
             return;
@@ -34,7 +34,7 @@ final class Capture extends OutputStream {
         System.setErr(stream);
     }
 
-    /** Führt {@code action} aus und liefert, was USE dabei ausgegeben hat. */
+    /** Runs {@code action} and returns what USE printed while doing so. */
     static String during(Runnable action) {
         Capture c = instance;
         if (c == null) {

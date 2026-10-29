@@ -1,10 +1,10 @@
 'use strict';
-// Prüft den Sprachserver über LSP: öffnet die Beispiele in test/samples, vergleicht
-// die Diagnosen mit den erwarteten, ändert und schließt ein Dokument, prüft die
-// Vervollständigung und beendet den Server. Aufruf (im Ordner use-vscode, nach ./build.sh):
+// Tests the language server via LSP: opens the samples in test/samples, compares
+// the diagnostics with the expected ones, changes and closes a document, checks
+// completion and shuts the server down. Usage (in the use-vscode folder, after ./build.sh):
 //
-//   node test/server-test.js              lokales Java (JAVA_HOME, USE_HOME oder .build/use)
-//   node test/server-test.js --container  im Image use-ocl:7.5.0 (USE_ENGINE, sonst docker)
+//   node test/server-test.js              local Java (JAVA_HOME, USE_HOME or .build/use)
+//   node test/server-test.js --container  in the image use-ocl:7.5.0 (USE_ENGINE, else docker)
 
 const cp = require('child_process');
 const fs = require('fs');
@@ -16,7 +16,7 @@ const ROOT = path.resolve(__dirname, '..');
 const SAMPLES = path.join(__dirname, 'samples');
 const MAIN_CLASS = 'de.htwk.uselsp.Main';
 
-// [Zeile, Spalte] ab 1, Art, Ausschnitt aus der Meldung
+// [line, column] from 1, severity, excerpt from the message
 const EXPECTED = {
   'bibliothek.use': [],
   'bibliothek.soil': [],
@@ -38,8 +38,8 @@ const EXPECTED = {
 };
 const SEVERITY = { 1: 'error', 2: 'warning', 3: 'information', 4: 'hint' };
 
-// Vervollständigung: Text, der an das Beispiel angehängt wird (§ ist die
-// Schreibmarke), auslösendes Zeichen, Namen, die vorkommen müssen bzw. nicht dürfen
+// Completion: text appended to the sample (§ is the cursor), trigger
+// character, names that must appear, names that must not
 const COMPLETIONS = {
   'bibliothek.use': [
     ['context Medium inv T:\n  self.§', '.', ['titel', 'zustand', 'leser', 'oclIsKindOf'], ['ausweis', 'medium']],
@@ -108,7 +108,7 @@ async function main() {
   const connection = rpc.createMessageConnection(
     new rpc.StreamMessageReader(server.stdout), new rpc.StreamMessageWriter(server.stdin));
 
-  // je URI die Diagnosen nacheinander, wie sie ankommen
+  // per URI, the diagnostics in the order they arrive
   const waiting = new Map();
   const received = new Map();
   connection.onNotification('textDocument/publishDiagnostics', (params) => {
@@ -129,7 +129,7 @@ async function main() {
     }
     return received.get(uri).shift();
   }
-  // der Client schickt dem Server die Modelle neben einem Soil-Skript
+  // the client sends the server the models next to a Soil script
   let modelRequests = 0;
   connection.onRequest('useOcl/models', ({ uri }) => {
     modelRequests++;
@@ -158,7 +158,7 @@ async function main() {
   }
   console.log(`     (Start und erste Prüfungen: ${Date.now() - started} ms)`);
 
-  // Änderung: aus dem fehlerfreien Modell wird ein fehlerhaftes und zurück
+  // Change: the error-free model becomes a faulty one and back again
   const ok = fs.readFileSync(path.join(SAMPLES, 'bibliothek.use'), 'utf8');
   const uri = uris['bibliothek.use'];
   connection.sendNotification('textDocument/didChange', {
@@ -176,8 +176,8 @@ async function main() {
   d = await nextDiagnostics(uris['bibliothek-fehler.use']);
   check(d.diagnostics.length === 0, 'didClose: Diagnosen gelöscht');
 
-  // Vervollständigung: die Modelle sind beim Tippen unvollständig, der Server
-  // nimmt die letzte fehlerfreie Fassung (bibliothek.use ist gerade fehlerfrei)
+  // Completion: the models are incomplete while typing, the server uses the
+  // last error-free version (bibliothek.use is currently error-free)
   let version = 10;
   for (const [name, cases] of Object.entries(COMPLETIONS)) {
     const original = fs.readFileSync(path.join(SAMPLES, name), 'utf8');

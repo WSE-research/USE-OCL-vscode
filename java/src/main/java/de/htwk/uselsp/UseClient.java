@@ -7,10 +7,10 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
 
 /**
- * Der Client mit einer eigenen Anfrage: die Modelle neben einem Soil-Skript.
- * Der Server liest selbst keine Dateien (im Container sieht er nur seinen Code);
- * für die Vervollständigung in Skripten schickt ihm die Erweiterung die
- * {@code .use}-Dateien aus dem Ordner des Skripts.
+ * The client with a custom request: the models next to a Soil script.
+ * The server reads no files itself (in the container it sees only its own code);
+ * for completion in scripts, the extension sends it the {@code .use} files from
+ * the script's folder.
  */
 interface UseClient extends LanguageClient {
 

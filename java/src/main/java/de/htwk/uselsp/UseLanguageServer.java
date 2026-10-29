@@ -19,7 +19,7 @@ import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 
-/** Lebenszyklus des Servers; die eigentliche Arbeit macht {@link UseDocuments}. */
+/** Server lifecycle; the actual work is done by {@link UseDocuments}. */
 final class UseLanguageServer implements LanguageServer, LanguageClientAware {
 
     static final String VERSION = "0.2.0";
@@ -47,7 +47,7 @@ final class UseLanguageServer implements LanguageServer, LanguageClientAware {
         sync.setSave(new SaveOptions(false));
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(sync);
-        // "." für Elemente, ">" für "->", ":" für "::", "!" für Soil-Anweisungen
+        // "." for features, ">" for "->", ":" for "::", "!" for Soil statements
         capabilities.setCompletionProvider(new CompletionOptions(false, List.of(".", ">", ":", "!")));
         return CompletableFuture.completedFuture(
                 new InitializeResult(capabilities, new ServerInfo("USE-Sprachserver", VERSION)));

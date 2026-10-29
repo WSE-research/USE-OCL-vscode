@@ -1,8 +1,8 @@
 'use strict';
-// VS Code-Erweiterung für USE (UML-based Specification Environment): Hervorhebung
-// über die Grammatiken in syntaxes/, Prüfung und Autovervollständigung über den
-// Sprachserver in server/ (Java, nutzt den Compiler von USE selbst). Der Server läuft im Container-Image
-// von run-use.sh oder mit einem lokalen Java 21 und einer USE-Installation.
+// VS Code extension for USE (UML-based Specification Environment): highlighting
+// via the grammars in syntaxes/, validation and auto-completion via the language
+// server in server/ (Java, uses USE's own compiler). The server runs in the container
+// image of run-use.sh or with a local Java 21 and a USE installation.
 
 const vscode = require('vscode');
 const cp = require('child_process');
@@ -35,7 +35,7 @@ function deactivate() {
   return stop();
 }
 
-/** Startet den Server (neu); mehrere Aufrufe laufen nacheinander ab. */
+/** (Re)starts the server; multiple calls run one after another. */
 function restart(context) {
   queue = queue
     .then(async () => {
@@ -81,9 +81,9 @@ async function start(context) {
 }
 
 /**
- * Die Modelle (.use) im Ordner eines Soil-Skripts, für die Vervollständigung im
- * Skript; offene Modelle mit ihrem Text aus dem Editor. Der Server liest selbst
- * keine Dateien.
+ * The models (.use) in the folder of a Soil script, for completion in the
+ * script; open models with their text from the editor. The server does not read
+ * any files itself.
  */
 async function modelsNextTo(uri) {
   const script = vscode.Uri.parse(uri);
@@ -110,13 +110,13 @@ async function modelsNextTo(uri) {
       const text = doc ? doc.getText() : new TextDecoder().decode(await vscode.workspace.fs.readFile(file));
       models.push({ uri: file.toString(), text });
     } catch {
-      // nicht lesbar: ohne dieses Modell
+      // not readable: leave this model out
     }
   }
   return models;
 }
 
-/** Wie der Server starten kann: lokales Java oder Container, je nach useOcl.server.mode. */
+/** How the server can start: local Java or container, depending on useOcl.server.mode. */
 async function findLaunch(context, problems) {
   const cfg = vscode.workspace.getConfiguration('useOcl');
   const mode = cfg.get('server.mode', 'auto');
@@ -176,7 +176,7 @@ async function containerLaunch(cfg, serverDir, problems) {
     problems.imageMissing = true;
     return undefined;
   }
-  // Der Server liest nur den Text aus dem Editor: kein Netz, nur der eigene Code eingebunden
+  // The server only reads the text from the editor: no network, only its own code mounted
   const args = [...engine.slice(1), 'run', '--rm', '-i', '--network', 'none', '-v', `${serverDir}:/lsp:ro`];
   if (process.platform === 'linux' && (await run('selinuxenabled', [])).ok) {
     args.push('--security-opt', 'label=disable');
@@ -186,8 +186,8 @@ async function containerLaunch(cfg, serverDir, problems) {
 }
 
 /**
- * Das Container-Werkzeug wie in run-use.sh: das erste, dessen `info` klappt;
- * sonst Podman mit eigenem Speicher unter /var/tmp (USE_PODMAN_STORE).
+ * The container tool as in run-use.sh: the first one whose `info` succeeds;
+ * otherwise Podman with its own storage under /var/tmp (USE_PODMAN_STORE).
  */
 async function findEngine(preference) {
   const candidates = preference === 'auto' ? ['docker', 'podman'] : [preference];
@@ -216,7 +216,7 @@ async function findEngine(preference) {
   return undefined;
 }
 
-/** Baut das Image aus container/Dockerfile (dasselbe Image wie run-use.sh in den SE-Übungen). */
+/** Builds the image from container/Dockerfile (the same image as run-use.sh in the SE exercises). */
 async function buildImage(context) {
   const cfg = vscode.workspace.getConfiguration('useOcl');
   const engine = await findEngine(cfg.get('container.engine', 'auto'));
@@ -287,7 +287,7 @@ async function javaVersion(java) {
   return m[1] === '1' ? Number(m[2]) : Number(m[1]);
 }
 
-/** Führt ein Programm ohne Shell aus; out enthält stdout und stderr. */
+/** Runs a program without a shell; out contains stdout and stderr. */
 function run(command, args, timeout = 30000) {
   return new Promise((resolve) => {
     cp.execFile(command, args, { timeout, windowsHide: true }, (err, stdout, stderr) => {

@@ -1,8 +1,8 @@
 'use strict';
-// Startet VS Code unsichtbar (xvfb-run) mit der Erweiterung aus diesem Ordner und
-// einem frischen Profil und führt darin suite.js aus. Aufruf: node test/e2e/run.js [--java]
-//   ohne Schalter: Sprachserver im Container (wie bei Studierenden üblich)
-//   --java:        lokales Java 21 (JAVA_HOME) mit USE aus USE_HOME bzw. .build/use
+// Starts VS Code invisibly (xvfb-run) with the extension from this folder and a
+// fresh profile and runs suite.js in it. Usage: node test/e2e/run.js [--java]
+//   no flag:       language server in the container (the usual setup for students)
+//   --java:        local Java 21 (JAVA_HOME) with USE from USE_HOME or .build/use
 
 const cp = require('child_process');
 const fs = require('fs');

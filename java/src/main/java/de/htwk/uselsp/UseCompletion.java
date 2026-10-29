@@ -41,34 +41,34 @@ import org.tzi.use.uml.ocl.type.Type.VoidHandling;
 import org.tzi.use.uml.ocl.type.TypeFactory;
 
 /**
- * Vorschläge für die Autovervollständigung in Modellen und Soil-Skripten. Was an
- * der Schreibmarke gebraucht wird (Schlüsselwort, Typ, Name, Element nach
- * {@code .}, {@code ->} oder {@code ::}), liest die Klasse aus dem Text davor;
- * den Typ des Ausdrucks vor dem Punkt bestimmt USE selbst, indem es ihn gegen
- * das zuletzt fehlerfrei übersetzte Modell übersetzt. Nicht threadsicher (USE
- * hat globalen Zustand); der Server ruft es nur aus seinem Prüf-Thread auf.
+ * Suggestions for auto-completion in models and Soil scripts. What is needed at
+ * the cursor (keyword, type, name, feature after {@code .}, {@code ->} or
+ * {@code ::}) the class reads from the text before it; the type of the expression
+ * before the dot is determined by USE itself, by compiling the expression against
+ * the last model that compiled without errors. Not thread-safe (USE has global
+ * state); the server calls it only from its check thread.
  */
 final class UseCompletion {
 
-    /** Ein Modell, aus dem Namen kommen: übersetzt (null, solange es keine fehlerfreie Fassung gab) und als Text. */
+    /** A model that names come from: compiled (null as long as there was no error-free version) and as text. */
     record Model(MModel model, String text) {
     }
 
     private record Token(String text, int start, int end, int line) {
     }
 
-    /** Namen aus den Modellen und ihrem Text; eine gerade erst getippte Klasse steht nur im Text. */
+    /** Names from the models and their text; a class that was just typed is only in the text. */
     private record Names(Set<String> classes, Map<String, List<String>> enums, Set<String> associations) {
     }
 
-    /** Variablen (Typ null: unbekannt) für die Typbestimmung eines Ausdrucks. */
+    /** Variables (type null: unknown) for determining the type of an expression. */
     private record Env(MModel model, MClass self, Map<String, Type> vars) {
     }
 
-    /** Was der Text vor der Schreibmarke über die Stelle in einem Modell verrät. */
+    /** What the text before the cursor reveals about the position in a model. */
     private static final class Scope {
         String block; // null, "class", "association", "enum", "constraints"
-        String section; // in Klassen: "attributes", "operations", "constraints", "statemachines"
+        String section; // in classes: "attributes", "operations", "constraints", "statemachines"
         String selfClass;
         String selfVar;
         final Map<String, String> params = new LinkedHashMap<>();
@@ -88,7 +88,7 @@ final class UseCompletion {
 
     private static final String INPUT = "<completion>";
 
-    // Sortierung: Variablen und Elemente zuerst, Schlüsselwörter zuletzt
+    // sort order: variables and features first, keywords last
     private static final String VARIABLES = "0";
     private static final String FEATURES = "1";
     private static final String STANDARD = "2";
@@ -99,7 +99,7 @@ final class UseCompletion {
     private static final Pattern TOKEN = Pattern.compile("[A-Za-z_]\\w*|\\d+|::|->|:=|\\.\\.|<>|<=|>=|\\S");
     private static final Pattern IDENT = Pattern.compile("[A-Za-z_]\\w*");
 
-    /** Stellen, an denen ein Typ steht: {@code name :} in Deklarationen, Parametern, Iteratoren, let. */
+    /** Positions where a type goes: {@code name :} in declarations, parameters, iterators, let. */
     private static final Pattern TYPE_POSITION = Pattern.compile(
             "(?:(?:^|[(,;])\\s*(?!(?:inv|pre|post|init|derive|derived)\\s*:)[A-Za-z_]\\w*\\s*:"
                     + "|\\)\\s*:|\\b(?:let|context|declare)\\s+[A-Za-z_]\\w*\\s*:"
@@ -122,7 +122,7 @@ final class UseCompletion {
             "\\b(?:association|composition|aggregation|associationclass|associationClass)\\s+([A-Za-z_]\\w*)");
     private static final Pattern ENUM_DECL = Pattern.compile("\\benum\\s+([A-Za-z_]\\w*)\\s*\\{([^}]*)");
 
-    // Soil: Objekte des Skripts und die Stellen in einer Anweisung
+    // Soil: objects of the script and the positions in a statement
     private static final Pattern CREATE = Pattern.compile("^\\s*!!?\\s*create\\s+([\\w\\s,]+?)\\s*:\\s*([A-Za-z_]\\w*)");
     private static final Pattern ASSIGN_NEW = Pattern.compile(
             "^\\s*!!?\\s*([A-Za-z_]\\w*)\\s*:=\\s*new\\s+([A-Za-z_]\\w*)(?:\\s*\\(\\s*'([^']*)')?");
@@ -143,16 +143,15 @@ final class UseCompletion {
     private static final List<String> SHELL_COMMANDS = List.of("check", "info class", "info model", "info state",
             "open", "reset", "undo", "redo", "help", "quit");
     private static final Set<String> HIDDEN_OPERATIONS = Set.of("useToId");
-    /** Soil-Anweisungen, nach denen gleich ein Objekt oder eine Klasse kommt. */
+    /** Soil statements that are directly followed by an object or a class. */
     private static final Set<String> OBJECT_OR_CLASS_FOLLOWS = Set.of("new", "destroy", "set", "openter");
 
     private final Map<String, List<CompletionItem>> standardOperations = new HashMap<>();
 
     /**
-     * Die Vorschläge an Zeile/Spalte (ab 0) von {@code text}. {@code trigger} ist das
-     * Zeichen, das die Anfrage ausgelöst hat (null beim Tippen eines Namens);
-     * {@code models} sind für ein Modell das Modell selbst, für ein Skript die
-     * Modelle daneben.
+     * The suggestions at line/column (from 0) of {@code text}. {@code trigger} is the
+     * character that triggered the request (null when typing a name); for a model,
+     * {@code models} is the model itself, for a script the models next to it.
      */
     List<CompletionItem> complete(String text, int line, int character, boolean soil, String trigger,
             List<Model> models) {
@@ -179,7 +178,7 @@ final class UseCompletion {
         return items.list();
     }
 
-    // ---------------------------------------------------------------- Modelle
+    // ---------------------------------------------------------------- Models
 
     private void completeModel(String code, int word, String op, Names names, MModel model, Items items) {
         Scope s = scope(code, word);
@@ -221,7 +220,7 @@ final class UseCompletion {
         }
     }
 
-    /** Schlüsselwörter und Vorlagen für die Struktur eines Modells, je nach Abschnitt. */
+    /** Keywords and templates for the structure of a model, depending on the section. */
     private static void structure(Scope s, String head, Items items) {
         if (!head.isBlank()) {
             if ("attributes".equals(s.section) && AFTER_ATTRIBUTE_TYPE.matcher(head).find()) {
@@ -263,14 +262,14 @@ final class UseCompletion {
     }
 
     /**
-     * Liest Klasse, Abschnitt und den Ausdruck, in dem die Schreibmarke steht, aus
-     * den Wörtern davor. Heuristisch, denn der Text ist beim Tippen oft unvollständig.
+     * Reads the class, the section and the expression containing the cursor from the
+     * words before it. Heuristic, since the text is often incomplete while typing.
      */
     private static Scope scope(String code, int end) {
         List<Token> tokens = tokens(code, end);
         Scope s = new Scope();
         Deque<String> nesting = new ArrayDeque<>();
-        String pending = null; // ":" bei inv/pre/post, ":=" bei init/derive (dort auch "=")
+        String pending = null; // ":" for inv/pre/post, ":=" for init/derive (also "=" there)
         int lastLine = -1;
         for (int i = 0; i < tokens.size(); i++) {
             Token t = tokens.get(i);
@@ -397,7 +396,7 @@ final class UseCompletion {
         return s;
     }
 
-    /** {@code context [v :] C [:: op(params) [: T]]}; liefert den Index des letzten gelesenen Worts. */
+    /** {@code context [v :] C [:: op(params) [: T]]}; returns the index of the last word read. */
     private static int contextHeader(List<Token> tokens, int i, Scope s) {
         int j = i + 1;
         if (j + 2 < tokens.size() && tokens.get(j + 1).text().equals(":")) {
@@ -417,7 +416,7 @@ final class UseCompletion {
         return j;
     }
 
-    /** Parameter ab der öffnenden Klammer bei {@code i}, dann {@code : Ergebnistyp} auf derselben Zeile. */
+    /** Parameters from the opening parenthesis at {@code i}, then {@code : resultType} on the same line. */
     private static int operationHeader(List<Token> tokens, int i, Scope s) {
         s.operation = true;
         int depth = 0;
@@ -561,7 +560,7 @@ final class UseCompletion {
         }
     }
 
-    /** Objekte und Variablen des Skripts mit ihrer Klasse (bzw. ihrem Typ als Text). */
+    /** Objects and variables of the script with their class (or type) as text. */
     private static Map<String, String> objects(String text) {
         Map<String, String> objects = new LinkedHashMap<>();
         for (String line : text.split("\\R")) {
@@ -593,7 +592,7 @@ final class UseCompletion {
         return objects;
     }
 
-    /** Je übersetztem Modell die Objekte des Skripts mit ihrem Typ in diesem Modell. */
+    /** For each compiled model, the script's objects with their type in that model. */
     private List<Env> soilEnvs(List<Model> models, Map<String, String> objects) {
         List<Env> envs = new ArrayList<>();
         for (Model model : models) {
@@ -620,9 +619,9 @@ final class UseCompletion {
                 .details(null, type)));
     }
 
-    // ---------------------------------------------------------------- Ausdrücke
+    // ---------------------------------------------------------------- Expressions
 
-    /** Namen in einem Ausdruck: Variablen, Elemente von self, Klassen, Aufzählungen, Schlüsselwörter. */
+    /** Names in an expression: variables, features of self, classes, enumerations, keywords. */
     private static void expression(Env env, Names names, boolean post, Items items) {
         env.vars().forEach((name, type) -> items.add(item(name, CompletionItemKind.Variable,
                 type == null ? null : type.toString(), VARIABLES).details(null, type == null ? null : type.toString())));
@@ -642,7 +641,7 @@ final class UseCompletion {
         snippet(items, "Tuple{}", "Tuple{…}", "Tuple{${1:name} = $2}");
     }
 
-    /** Vorschläge nach {@code .}, {@code ->} oder {@code ::}, mit dem Typ des Ausdrucks davor. */
+    /** Suggestions after {@code .}, {@code ->} or {@code ::}, using the type of the expression before it. */
     private void members(String op, String code, int word, int lower, List<Env> envs, Names names, boolean statement,
             Items items) {
         int end = word - op.length();
@@ -679,7 +678,7 @@ final class UseCompletion {
     }
 
     private void objectMembers(Type t, boolean statement, Items items) {
-        // auf einer Collection ist x.a die Kurzform von x->collect(a)
+        // on a collection, x.a is shorthand for x->collect(a)
         Type target = t instanceof CollectionType c ? c.elemType() : t;
         if (target instanceof MClass c) {
             features(c, statement, items);
@@ -714,7 +713,7 @@ final class UseCompletion {
         }
     }
 
-    /** Attribute, Rollen und Operationen einer Klasse (mit geerbten); Operationen ohne Ergebnis nur in Anweisungen. */
+    /** Attributes, roles and operations of a class (incl. inherited); operations without result only in statements. */
     private static void features(MClass c, boolean statement, Items items) {
         for (MAttribute a : c.allAttributes()) {
             items.add(item(a.name(), CompletionItemKind.Field, "Attribut von " + a.owner().name(), FEATURES)
@@ -759,9 +758,8 @@ final class UseCompletion {
     }
 
     /**
-     * Die Standardoperationen von USE, die auf einen Typ passen. Welche das sind,
-     * entscheidet USE selbst: jede Operation wird mit dem Typ und möglichen
-     * Argumenttypen probiert.
+     * USE's standard operations that apply to a type. USE itself decides which ones
+     * these are: each operation is tried with the type and possible argument types.
      */
     private List<CompletionItem> standard(Type t, boolean collection) {
         return standardOperations.computeIfAbsent(t.toString(), key -> {
@@ -794,7 +792,7 @@ final class UseCompletion {
         });
     }
 
-    /** Argumenttypen (bis zwei), mit denen {@code op} auf {@code t} passt; zuletzt der Ergebnistyp. */
+    /** Argument types (up to two) with which {@code op} matches {@code t}; the result type last. */
     private static Type[] match(OpGeneric op, Type t, List<Type> candidates) {
         try {
             Type result = op.matches(new Type[] {t});
@@ -814,12 +812,12 @@ final class UseCompletion {
                 }
             }
         } catch (RuntimeException e) {
-            // manche Operationen prüfen ihre Argumente nicht vollständig
+            // some operations do not fully check their arguments
         }
         return null;
     }
 
-    /** Iteratorvariablen der offenen Iteratoren und let-Variablen vor der Schreibmarke. */
+    /** Iterator variables of the open iterators and let variables before the cursor. */
     private void binders(String code, int start, int end, Env env) {
         String expr = code.substring(start, end);
         Matcher it = ITERATOR.matcher(expr);
@@ -869,7 +867,7 @@ final class UseCompletion {
         }
     }
 
-    /** Ob die Klammer vor {@code from} vor dem Ende von {@code s} wieder geschlossen wird. */
+    /** Whether the bracket before {@code from} is closed again before the end of {@code s}. */
     private static boolean closes(String s, int from, char open, char close) {
         int depth = 1;
         for (int i = from; i < s.length(); i++) {
@@ -883,7 +881,7 @@ final class UseCompletion {
         return false;
     }
 
-    /** Das nächste Schlüsselwort {@code word} außerhalb von Klammern ab {@code from}, sonst -1. */
+    /** The next keyword {@code word} outside of brackets, starting at {@code from}; otherwise -1. */
     private static int keywordAt(String s, int from, String word) {
         int depth = 0;
         for (int i = from; i < s.length(); i++) {
@@ -900,13 +898,13 @@ final class UseCompletion {
         return -1;
     }
 
-    /** Der Typ eines Ausdrucks, übersetzt von USE; null, wenn USE ihn nicht übersetzt. */
+    /** The type of an expression, compiled by USE; null if USE does not compile it. */
     private Type typeOf(String expr, Env env) {
         String e = expr.replace("@pre", "").strip();
         if (e.isEmpty() || env.model() == null) {
             return null;
         }
-        // USE erlaubt self wegzulassen: aus "medium" wird "self.medium"
+        // USE allows omitting self: "medium" becomes "self.medium"
         Matcher first = IDENT.matcher(e);
         if (env.self() != null && first.lookingAt() && !env.vars().containsKey(first.group())
                 && hasFeature(env.self(), first.group())) {
@@ -918,7 +916,7 @@ final class UseCompletion {
                 try {
                     vars.add(v.getKey(), v.getValue(), null);
                 } catch (SemanticException | RuntimeException ex) {
-                    // doppelt deklariert: die erste gilt
+                    // declared twice: the first one counts
                 }
             }
         }
@@ -958,8 +956,8 @@ final class UseCompletion {
     }
 
     /**
-     * Der Anfang des Ausdrucks, der bei {@code end} endet: Namen, Punkte, Pfeile und
-     * Klammern rückwärts, höchstens bis {@code lower}.
+     * The start of the expression that ends at {@code end}: names, dots, arrows and
+     * brackets backwards, at most down to {@code lower}.
      */
     static int chainStart(String s, int end, int lower) {
         int i = end;
@@ -994,7 +992,7 @@ final class UseCompletion {
                 i -= 2;
                 afterOperator = true;
             } else if (Character.isWhitespace(c)) {
-                // Leerraum nur vor oder nach einem Punkt oder Pfeil, etwa am Zeilenanfang
+                // whitespace only before or after a dot or arrow, e.g. at the start of a line
                 int k = i - 1;
                 while (k > lower && Character.isWhitespace(s.charAt(k - 1))) {
                     k--;
@@ -1027,7 +1025,7 @@ final class UseCompletion {
         return -1;
     }
 
-    // ---------------------------------------------------------------- Namen und Typen
+    // ---------------------------------------------------------------- Names and types
 
     private static Names names(List<Model> models) {
         Set<String> classes = new TreeSet<>();
@@ -1094,7 +1092,7 @@ final class UseCompletion {
 
     // ---------------------------------------------------------------- Text
 
-    /** Der Text mit Leerzeichen statt Kommentaren und Zeichenketten; null, wenn sein Ende in einem davon liegt. */
+    /** The text with spaces instead of comments and strings; null if its end lies inside one of them. */
     static String blank(String text) {
         StringBuilder b = new StringBuilder(text);
         int n = text.length();
@@ -1170,7 +1168,7 @@ final class UseCompletion {
         return null;
     }
 
-    /** Ob das auslösende Zeichen hier etwas zu vervollständigen beginnt (">" nur in "->", ":" nur in "::"). */
+    /** Whether the trigger character starts something to complete here (">" only in "->", ":" only in "::"). */
     private static boolean fits(String trigger, String op, String head, boolean soil) {
         return switch (trigger) {
             case "." -> ".".equals(op);
@@ -1203,7 +1201,7 @@ final class UseCompletion {
         return Character.isLetterOrDigit(c) || c == '_';
     }
 
-    // ---------------------------------------------------------------- Vorschläge
+    // ---------------------------------------------------------------- Suggestions
 
     private static Item item(String label, CompletionItemKind kind, String detail, String group) {
         return new Item(label, kind, detail, group);
@@ -1220,7 +1218,7 @@ final class UseCompletion {
                 .snippet());
     }
 
-    /** Ein Vorschlag im Aufbau. */
+    /** A suggestion under construction. */
     private static final class Item {
         final CompletionItem c = new CompletionItem();
 
@@ -1254,14 +1252,14 @@ final class UseCompletion {
             return this;
         }
 
-        /** Öffnet nach dem Einfügen gleich die nächsten Vorschläge (etwa Klassen nach "!new "). */
+        /** Opens the next suggestions right after insertion (e.g. classes after "!new "). */
         Item retrigger() {
             c.setCommand(new Command("", "editor.action.triggerSuggest"));
             return this;
         }
     }
 
-    /** Vorschläge ohne Doppelte (gleicher Name und gleiche Parameter). */
+    /** Suggestions without duplicates (same name and same parameters). */
     private static final class Items {
         private final Map<String, CompletionItem> items = new LinkedHashMap<>();
 

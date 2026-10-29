@@ -32,9 +32,9 @@ import de.htwk.uselsp.UseClient.ModelFile;
 import de.htwk.uselsp.UseClient.ModelsParams;
 
 /**
- * Hält die offenen Dokumente und prüft sie nach jeder Änderung (kurz verzögert,
- * damit nicht jeder Tastendruck einen Lauf auslöst) in einem einzigen Thread; im
- * selben Thread entstehen die Vorschläge der Autovervollständigung.
+ * Holds the open documents and checks them after every change (with a short delay,
+ * so that not every keystroke triggers a run) in a single thread; the auto-completion
+ * suggestions are produced in the same thread.
  */
 final class UseDocuments implements TextDocumentService {
 
@@ -43,7 +43,7 @@ final class UseDocuments implements TextDocumentService {
     private record Document(String language, String text, int version) {
     }
 
-    /** Zuletzt übersetzter Text eines Modells und seine letzte fehlerfreie Fassung (oder null). */
+    /** Last compiled text of a model and its last error-free version (or null). */
     private record Compiled(String text, MModel model) {
     }
 
@@ -85,7 +85,7 @@ final class UseDocuments implements TextDocumentService {
         if (old == null || params.getContentChanges().isEmpty()) {
             return;
         }
-        // vollständige Synchronisation: die letzte Änderung enthält den ganzen Text
+        // full synchronization: the last change contains the whole text
         String text = params.getContentChanges().get(params.getContentChanges().size() - 1).getText();
         open.put(uri, new Document(old.language(), text, params.getTextDocument().getVersion()));
         schedule(uri, DELAY_MS);
@@ -107,14 +107,13 @@ final class UseDocuments implements TextDocumentService {
 
     @Override
     public void didSave(DidSaveTextDocumentParams params) {
-        // der Text ist schon aus didChange bekannt
+        // the text is already known from didChange
     }
 
     /**
-     * Vorschläge an der Schreibmarke. Ein Modell vervollständigt sich aus seiner
-     * letzten fehlerfreien Fassung (beim Tippen ist der Text meist gerade
-     * fehlerhaft), ein Skript aus den Modellen in seinem Ordner, die der Client
-     * schickt.
+     * Suggestions at the cursor. A model is completed from its last error-free
+     * version (while typing, the text usually contains errors), a script from the
+     * models in its folder, which the client sends.
      */
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams params) {
@@ -142,7 +141,7 @@ final class UseDocuments implements TextDocumentService {
         }, worker);
     }
 
-    /** Die Modelle im Ordner des Skripts, vom Client; ohne Antwort keine. */
+    /** The models in the script's folder, from the client; none if there is no answer. */
     private CompletableFuture<List<ModelFile>> modelsNextTo(String uri) {
         if (!(client instanceof UseClient c)) {
             return CompletableFuture.completedFuture(List.of());
@@ -152,7 +151,7 @@ final class UseDocuments implements TextDocumentService {
                 .thenApply(list -> list == null ? List.of() : list);
     }
 
-    /** Das Modell zu einem Text; hat der Text Fehler, seine letzte fehlerfreie Fassung. Nur im Prüf-Thread. */
+    /** The model for a text; if the text has errors, its last error-free version. Check thread only. */
     private MModel model(String uri, String text) {
         Compiled last = compiled.get(uri);
         if (last != null && last.text().equals(text)) {
@@ -197,7 +196,7 @@ final class UseDocuments implements TextDocumentService {
                 messages = checked.messages();
             }
         } catch (RuntimeException | StackOverflowError | LinkageError e) {
-            // ein Fehler in USE soll nur diese Prüfung kosten, nicht den Server
+            // an error in USE should cost only this check, not the server
             e.printStackTrace();
             messages = List.of(new Message(0, 0, "Interner Fehler beim Prüfen: " + e, Severity.ERROR));
         }
@@ -208,7 +207,7 @@ final class UseDocuments implements TextDocumentService {
         return "soil".equals(doc.language()) || doc.language() == null && uri.endsWith(".soil");
     }
 
-    /** Der Dateiname, unter dem USE die Meldungen ausgibt. */
+    /** The file name under which USE prints the messages. */
     private static String fileName(String uri) {
         try {
             String path = URI.create(uri).getPath();
@@ -216,12 +215,12 @@ final class UseDocuments implements TextDocumentService {
                 return path.substring(path.lastIndexOf('/') + 1);
             }
         } catch (IllegalArgumentException e) {
-            // kein gültiger URI, etwa bei ungespeicherten Dokumenten
+            // not a valid URI, e.g. for unsaved documents
         }
         return "model.use";
     }
 
-    /** Basis für {@code import}; nur für Dateien, die der Server auch lesen kann. */
+    /** Base for {@code import}; only for files the server can actually read. */
     private static URI baseUri(String uri) {
         try {
             URI u = URI.create(uri);
