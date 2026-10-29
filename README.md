@@ -18,10 +18,10 @@ Die farbige Hervorhebung funktioniert auch ohne beides; dann fehlt nur die Prüf
 
 ## Installation
 
-In VS Code unter „Erweiterungen“ im Menü „…“ den Punkt „Aus VSIX installieren…“ wählen und `use-ocl-0.1.0.vsix` angeben (entsteht mit `./build.sh`, siehe unten), oder im Terminal:
+Das aktuelle Paket liegt im Release [latest](https://github.com/WSE-research/USE-OCL-vscode/releases/latest) als `use-ocl.vsix` (direkt: [use-ocl.vsix](https://github.com/WSE-research/USE-OCL-vscode/releases/latest/download/use-ocl.vsix)); es wird nach jedem Merge auf `main` neu gebaut. In VS Code unter „Erweiterungen“ im Menü „…“ den Punkt „Aus VSIX installieren…“ wählen und die Datei angeben, oder im Terminal:
 
 ```
-code --install-extension use-ocl-0.1.0.vsix
+code --install-extension use-ocl.vsix
 ```
 
 Danach einen Ordner mit `.use`- und `.soil`-Dateien öffnen. Beim ersten Öffnen einer solchen Datei startet der Sprachserver (im Container etwa eine Sekunde).
@@ -51,6 +51,8 @@ Meldungen beim Start und Fehler des Servers stehen im Ausgabekanal „USE“ (An
 `./build.sh` baut den Sprachserver und das Paket `use-ocl-<version>.vsix`; `./build.sh test` testet zusätzlich. Benötigt werden ein JDK 21 (`JAVA_HOME=~/jdk21 ./build.sh`), Maven und Node.js. Die USE-Bibliotheken holt das Skript aus dem Image `use-ocl:7.5.0` nach `.build/use` (oder aus `USE_HOME`).
 
 Die Tests prüfen die Grammatiken (`test/grammar`, mit vscode-tmgrammar-test), den Sprachserver über LSP mit lokalem Java und im Container (`test/server-test.js` mit den Beispielen in `test/samples`) und die Erweiterung in VS Code selbst, unsichtbar mit `xvfb-run` (`test/e2e`).
+
+Auf GitHub baut und testet `.github/workflows/release.yml` jeden Pull Request (ohne die Tests in VS Code, dort fehlt `code`). Nach jedem Merge auf `main` ersetzt es das Release `latest` durch das neue Paket, als `use-ocl-<version>.vsix` und als `use-ocl.vsix` mit gleichbleibendem Namen.
 
 Aufbau:
 
