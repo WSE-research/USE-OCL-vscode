@@ -32,7 +32,7 @@ USE reports the errors of a model only when the model is loaded, and the error o
 * *Builds its own image* — if the image is missing, the extension offers to build it.
 
 .A model and a Soil script with mistakes: highlighting, squiggles, the hover with a warning that USE itself prints without a position, and the *Problems* view with USE's messages
-image::assets/screenshot.png[Screenshot of VS Code with a USE model, the hover of a type warning and the Problems view listing the messages of USE]
+image::assets/screenshot.png["Screenshot of VS Code with a USE model, the hover of a type warning and the Problems view listing the messages of USE"]
 
 ---
 
