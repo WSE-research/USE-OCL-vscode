@@ -2,7 +2,7 @@
 # source files it replaces the release "latest" with the new package; changes
 # to documentation, tests or this automation alone build no release. Pull
 # requests are always built and tested; "Run workflow" on main releases on
-# demand. The tests inside VS Code (test/e2e) run locally only.
+# demand. The tests inside VS Code (test/e2e) and Qodana run in tests.yml.
 name: Release latest
 
 on:
@@ -17,6 +17,7 @@ on:
       - 'test/**'
       - '.github/**'
       - '.gitignore'
+      - 'qodana.yaml'
   pull_request:
     branches: [main]
   workflow_dispatch:

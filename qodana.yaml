@@ -1,0 +1,15 @@
+# Qodana configuration for .github/workflows/tests.yml. Without the secret
+# QODANA_TOKEN the workflow runs the free Qodana Community for JVM; with the token
+# of a Qodana Cloud project (Ultimate license) it runs Qodana for JVM instead, which
+# also evaluates the coverage the tests measured (.qodana/code-coverage).
+version: "1.0"
+linter: qodana-jvm-community
+projectJDK: "21"
+profile:
+  name: qodana.recommended
+exclude:
+  - name: All
+    paths:
+      - node_modules
+      - server
+      - .build

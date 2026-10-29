@@ -7,3 +7,6 @@ build.sh
 .github/**
 assets/**
 README.adoc
+qodana.yaml
+.qodana/**
+.idea/**
